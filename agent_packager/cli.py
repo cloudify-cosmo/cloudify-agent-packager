@@ -1,16 +1,17 @@
 # flake8: NOQA
 
-"""Script to run Jocker via command line
+"""Script to run Cloudify's Agent Packager via command line
 
 Usage:
-    jocker [--config=<path> -v]
-    jocker --version
+    cfy-ap [--config=<path> --force -v]
+    cfy-ap --version
 
 Options:
-    -h --help                   Show this screen.
-    -c --config=<path>          Path to yaml file containing docker-py configuration
-    -v --verbose                a LOT of output (Note: should be used carefully..)
-    --version                   Display current version of jocker and exit
+    -h --help                   Show this screen
+    -c --config=<path>          Path to config yaml (defaults to config.yaml)
+    -f --force                  Forces deletion and creation of venv
+    -v --verbose                verbose level logging
+    --version                   Display current version
 """
 
 from __future__ import absolute_import
@@ -37,6 +38,7 @@ def ver_check():
 def agent_packager_run(o):
     create(
         o.get('--config'),
+        o.get('--force'),
         o.get('--verbose')
         )
 

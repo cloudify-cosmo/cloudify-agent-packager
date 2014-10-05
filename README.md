@@ -1,89 +1,111 @@
 Cloudify Agent Packager
 =======================
 
-`repex` replaces strings in single/multiple files based on regular expressions.
+This tool creates Cloudify agent packages.
+
+### Overview
+
+Cloudify's Agents are basically a virtualenv with a series of modules installed in it with a few configuration files attached.
+
+This tool aims to:
+- Solve the problem of compiling module requirements on different distributions, thus bridging the gap of user compiled images, unfamiliar/minor distros and so on.
+- Allow users to create their own, personalized Cloudify agents with custom plugins of their choosing.
+- Make the agent creation process seamless. One config file. One liner cmd.
+- Allow users to override the `agent-installer` and `plugin-installer` modules so that they can implement their own.
+
 
 ### Installation
 
-Currently, repex is not in pypi, so you'll have to install it directly from Github:
+```shell
+pip install cloudify-agent-packager
+```
+
+For development:
 
 ```shell
-pip install https://github.com/cloudify-cosmo/repex/archive/master.tar.gz
+pip install https://github.com/cloudify-cosmo/cloudify-agent-packager/archive/master.tar.gz
 ```
 
 ### Usage
 
-Let's say you have files named "VERSION" in different directories which look like this:
+IMPORTANT NOTES:
 
-```json
-{
-  "date": "",
-  "commit": "",
-  "version": "3.1.0-m2",
-  "version_other": "3.1.2-m1",
-  "build": "8"
-}
+- You must use this tool on the distribution you're intending for your agent to run in as it might require compilation.
+- You must have the desired version of python installed on your chosen image.
+- You must have the `tar` binary in your distribution.
+
+```shell
+cfy-ap -h
+
+Script to run Cloudify's Agent Packager via command line
+
+Usage:
+    cfy-ap [--config=<path> --force -v]
+    cfy-ap --version
+
+Options:
+    -h --help                   Show this screen
+    -c --config=<path>          Path to config yaml (defaults to config.yaml)
+    -f --force                  Forces deletion and creation of venv
+    -v --verbose                verbose level logging
+    --version                   Display current version
 ```
 
-And you'd like to replace 3.1.0-m2 with 3.1.0-m3 in all of those files
 
-You would create a repex config.yaml with the following:
+### The YAML config file
 
 ```yaml
-variables:
-    version: 3.1.0m3
-
-paths:
-    -   type: VERSION
-        path: repex/tests/resources/
-        base_directory: repex/tests/resources/
-        match: '"version": "\d+\.\d+(\.\d+)?(-\w\d+)?'
-        replace: \d+\.\d+(\.\d+)?(-\w\d+)?
-        with: "{{ .version }}"
-        validate_before: true
-        must_include:
-            - date
-            - commit
-            - version
+distribution: Ubuntu
+version: 3.0
+venv: /home/nir0s/Ubuntu-agent/env
+python_path: /usr/bin/python
+base_modules:
+    plugins_common: https://github.com/cloudify-cosmo/cloudify-plugins-common/archive/3.1m4.tar.gz
+    rest_client: https://github.com/cloudify-cosmo/cloudify-rest-client/archive/3.1m4.tar.gz
+    script_plugin: https://github.com/cloudify-cosmo/cloudify-script-plugin/archive/1.1m4.tar.gz
+    diamond_plugin: https://github.com/cloudify-cosmo/cloudify-diamond-plugin/archive/1.1m4.tar.gz
+management_modules:
+    agent-installer: https://github.com/cloudify-cosmo/cloudify-fabric-plugin/archive/1.1m4.tar.gz
+    plugin-installer: https://github.com/cloudify-cosmo/cloudify-fabric-plugin/archive/1.1m4.tar.gz
+    windows-agent-installer: https://github.com/cloudify-cosmo/cloudify-fabric-plugin/archive/1.1m4.tar.gz
+    windows-plugin-installer: https://github.com/cloudify-cosmo/cloudify-fabric-plugin/archive/1.1m4.tar.gz
+additional_modules:
+    - pyzmq==14.3.1
+    - https://github.com/cloudify-cosmo/cloudify-fabric-plugin/archive/1.1m4.tar.gz
+output_tar: /home/nir0s/Ubuntu-agent.tar.gz
 ```
 
-and do the following
+#### Config YAML Explained
 
-```python
+NOTE: `version` is mandatory if not all `base` and `management` modules are provided in the config file. See below for the list of required modules.
 
-import os
-from repex.repex import iterate
+- `distribution` - Which distribution is this agent intended for. If this is omitted, the tool will try to retrieve the distribution by itself.
+- `version` - Which version of the `base` and `management` modules would you like to use? This is actually a release or branch name in Github. If `latest` is provided, `master` branch will be used.
+- `venv` - Path to the virtualenv you'd like to create.
+- `python_path` - CURRENTLY unused
+- `base_modules` - a `dict` of base modules to install into the package. This allows to override the defaults.
+- `management_modules` - a `dict` of management modules to install into the package. If omitted, the original cloudify-manager code will be downloaded and all management modules will be installed from there.
+- `additional_modules` - a `dict` of additional modules to install into the package. This is where you can add your plugins.
+- `output_tar` - Path to the tar file you'd like to create.
 
-VERSION = os.environ['VERSION'] # '3.1.0-m3'
+#### Base Modules:
 
-variables = {
-    'version': VERSION
-}
+Currently, these are the base modules required for the agent:
 
-iterate(CONFIG_YAML_FILE, variables)
-```
+- rest_client
+- plugins_common
+- script_plugin
+- diamond_plugin
 
-#### Config yaml Explained
+#### Management Modules:
 
-- `variables` is a dict of variables you can use throughout the config (using the API, you can also send the dictionary rather the hard code it into the config.yaml, which is obviously the more common use case.) `path`, `match`, `replace` and `with` can all receive variables.
-- `type` is the files name you'd like to look for.
-- `path` is a regex path in which you'd like to search for files (so, for instance, if you only want to replace files in directory names starting with "my-", you would write "my-.*")
-- `base_directory` is the directory from which you'd like to start the recursive search for files.
-- `match` is the initial regex based string you'd like to match before replacing the expression. This provides a more robust way to replace strings where you first match the exact area in which you'd like to replace the expression and only then match the expression you want to replace within it. It also provides a way to replace only specific instances of an expression, and not all.
-- `replace` - which regex expression would you like to replace?
-- `with` - what you replace with.
-- `validate_before` - a flag stating that you'd like to validate that the pattern you're looking for exists in the file and that all strings in `must_include` exists in the file as well.
-- `must_include` - as an additional layer of security, you can specify a set of regex based strings to look for to make sure that the files you're dealing with are the actual files you'd like to replace the expressions in.
+Currently, these are the base management modules required for the agent:
 
-In case you're providing a path to a file rather than a directory:
+- agent_installer
+- plugin_installer
+- windows_agent_installer
+- windows_plugin_installer
 
-- `type` and `base_directory` are depracated
-- you can provide a `to_file` key with the path to the file you'd like to create after replacing.
+#### Additional modules:
 
-#### Basic Functions
-
-3 basic functions are provided:
-
-- `iterate` - receives the config yaml file and the variables dict and iterates through the config file's `paths` dict destroying everything that comes in its path :)
-- `handle_path` - receives one of the objects in the `paths` dict in the config yaml file and the variables dict, finds all files, and processes them (is used by `iterate`).
-- `handle_file` - receives one of the objects in the `paths` dict in the config yaml file and the variables dict, and processes the specific file specified in the `path` key (used by `handle_path`).
+Note that if you want to use ZeroMQ in the script plugin, you'll have to explicitly configure it in the `additional_modules` section as shown above.

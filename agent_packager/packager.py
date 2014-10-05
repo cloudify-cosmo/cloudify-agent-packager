@@ -11,15 +11,21 @@ import tarfile
 import sys
 
 DEFAULT_CONFIG_FILE = 'config.yaml'
-DEFAULT_OUTPUT_TAR_PATH = '{0}/{1}-agent.tar.gz'
-DEFAULT_VENV_PATH = '{0}/{1}-agent/env'
+DEFAULT_OUTPUT_TAR_PATH = '/{0}-agent.tar.gz'
+DEFAULT_VENV_PATH = '/{0}-agent/env'
 
-MODULES = {
+EXTERNAL_MODULES = [
+    'celery==3.0.24'
+]
+
+BASE_MODULES = {
     'plugins_common': 'https://github.com/cloudify-cosmo/cloudify-rest-client/archive/{0}.tar.gz',  # NOQA
     'rest_client': 'https://github.com/cloudify-cosmo/cloudify-plugins-common/archive/{0}.tar.gz',  # NOQA
     'script_plugin': 'https://github.com/cloudify-cosmo/cloudify-script-plugin/archive/{0}.tar.gz',  # NOQA
-    'rest_service': 'https://github.com/cloudify-cosmo/cloudify-manager/archive/{0}.tar.gz'  # NOQA
+    'diamond_plugin': 'https://github.com/cloudify-cosmo/cloudify-diamond-plugin/archive/{0}.tar.gz'  # NOQA
 }
+
+MANAGER_REPO_URL = 'https://github.com/cloudify-cosmo/cloudify-manager/archive/{0}.tar.gz'  # NOQA
 
 MANAGEMENT_MODULES = {
     'agent_installer': 'plugins/agent-installer',
@@ -68,30 +74,44 @@ def _import_config(config_file=DEFAULT_CONFIG_FILE):
 
 
 def _run(cmd):
-    return subprocess.Popen(
+    """executes a command
+
+    :param string cmd: command to execute
+    """
+    p = subprocess.Popen(
         cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    (stdout, stderr) = p.communicate()
+    lgr.debug('stdout: {0}'.format(stdout))
+    lgr.debug('stderr: {0}'.format(stderr))
+    return p
 
 
 def _make_virtualenv(virtualenv_dir):
+    """creates a virtualenv
+
+    :param string virtualenv_dir: path of virtualenv to create
+    """
     lgr.debug('virtualenv_dir: {0}'.format(virtualenv_dir))
-    create_virtualenv_cmd = 'virtualenv {0}'.format(virtualenv_dir)
-    lgr.debug('virtualenv_cmd: {0}'.format(create_virtualenv_cmd))
-    p = _run(create_virtualenv_cmd)
-    (stdout, stderr) = p.communicate()
-    lgr.debug('stdout: {0}'.format(stdout))
-    lgr.debug('stderr: {0}'.format(stderr))
+    _run('virtualenv {0}'.format(virtualenv_dir))
 
 
 def _install_module(module, venv):
-    install_cmd = '{0}/bin/pip install {1}'.format(venv, module)
-    lgr.debug('install_cmd: {0}'.format(install_cmd))
-    p = _run(install_cmd)
-    (stdout, stderr) = p.communicate()
-    lgr.debug('stdout: {0}'.format(stdout))
-    lgr.debug('stderr: {0}'.format(stderr))
+    """installs a module in a virtualenv
+
+    :param string module: module to install. can be a url or a path.
+    :param string venv: path of virtualenv to install in.
+    """
+    lgr.debug('installing {0} to {1}'.format(module, venv))
+    _run('{1}/bin/pip install {0}'.format(module, venv))
 
 
 def _merge_modules(modules, config):
+    """merges the default modules with the modules from the config yaml
+
+    :param dict modules: dict containing base, management and additional
+    modules.
+    :param dict config: dict containing the config.
+    """
     additional_modules = config.get('additional_modules', [])
     modules['base'].update(config.get('base_modules', {}))
     modules['management'].update(config.get('management_modules', {}))
@@ -101,6 +121,8 @@ def _merge_modules(modules, config):
 
 
 def _download_file(url, destination):
+    """downloads a file to a destination
+    """
     lgr.debug('downloading {0} to {1}...'.format(url, destination))
     destination = destination if destination else url.split('/')[-1]
     r = requests.get(url, stream=True)
@@ -113,6 +135,13 @@ def _download_file(url, destination):
 
 
 def _get_manager(source, venv):
+    """retrieves the manager repo
+
+    This is used by default to install the installer plugins.
+
+    :param string source: url of manager tar.gz file.
+    :param string venv: virtualenv path.
+    """
     manager_tmp_dir = os.path.join(venv, 'manager')
     os.makedirs(manager_tmp_dir)
     tmp_tar = '{0}/tmp.tar.gz'.format(manager_tmp_dir)
@@ -135,7 +164,7 @@ def _untar(source, destination):
         tar.extractall(destination)
 
 
-def create(config_file, verbose=True, cleanstart=True):
+def create(config_file, force=True, verbose=True):
     """Creates an agent package (tar.gz)
 
     This will try to identify the distribution of the host you're running on.
@@ -143,9 +172,11 @@ def create(config_file, verbose=True, cleanstart=True):
     `distribution` config object in the config.yaml.
 
     If not all `base` AND `management` modules are explicitly specified,
-    A `version` config object must be specified in the config.yaml as well.
+    A `version` config object must be specified in the config.yaml as well,
+    which will be used to retrieve the corrent version of the module.
 
-    A virtualenv will be created
+    A virtualenv will be created under `/DISTRIBUTION-agent/env` unless
+    configured in the yaml under the `venv` property.
     The order of the modules' installation is as follows:
 
     cloudify-rest-service
@@ -157,7 +188,7 @@ def create(config_file, verbose=True, cleanstart=True):
     When all modules are installed, a tar.gz file will be created. The
     `output_tar` config object can be specified to determine the path to the
     output file. If omitted, a default path will be given with the
-    format `BASE_DIR/DISTRIBUTION-agent.tar.gz`.
+    format `/DISTRIBUTION-agent.tar.gz`.
     """
     _set_global_verbosity_level(verbose)
 
@@ -170,25 +201,27 @@ def create(config_file, verbose=True, cleanstart=True):
                   'please specify the distribution in the yaml.')
         sys.exit(1)
 
-    base_dir = config.get('base_dir', '')
-    venv = config.get('venv', DEFAULT_VENV_PATH.format(base_dir, distro))
+    # REVIEW!...
+    venv = config.get('venv', DEFAULT_VENV_PATH.format(distro))
 
     try:
-        version = config['version']
+        version = \
+            'master' if config['version'] == 'latest' else config['version']
     except ValueError:
-        lgr.warning('version is mandatory if not all base and management '
-                    'modules are specified in the yaml.')
+        lgr.warning('supplying a version is mandatory if not all base and '
+                    'management modules are specified in the yaml.')
 
     destination_tar = config.get('output_tar',
-                                 DEFAULT_OUTPUT_TAR_PATH.format(
-                                     base_dir, distro))
+                                 DEFAULT_OUTPUT_TAR_PATH.format(distro))
+
     lgr.debug('distibution is: {0}'.format(distro))
     lgr.debug('venv is: {0}'.format(venv))
+    lgr.debug('destination tarfile is: {0}'.format(destination_tar))
 
     # create modules dictionary
     lgr.debug('retrieving modules to install...')
     modules = {}
-    modules['base'] = MODULES
+    modules['base'] = BASE_MODULES
     modules['management'] = MANAGEMENT_MODULES
     modules['additional'] = []
     for base_module, url in modules['base'].items():
@@ -197,29 +230,44 @@ def create(config_file, verbose=True, cleanstart=True):
         modules['management'][mgmt_module] = url.format(version)
     modules = _merge_modules(modules, config)
 
-    lgr.debug(json.dumps(
-        modules, sort_keys=True, indent=4, separators=(',', ': ')))
+    lgr.debug('modules to install: {0}'.format(json.dumps(
+        modules, sort_keys=True, indent=4, separators=(',', ': '))))
 
     # virtualenv
-    if os.path.isdir(venv) and cleanstart:
-        lgr.debug('removing previous venv...')
-        shutil.rmtree(venv)
+    if os.path.isdir(venv):
+        if force:
+            lgr.info('removing previous venv...')
+            shutil.rmtree(venv)
+        else:
+            lgr.error('virtualenv already exists at {0}. '
+                      'You can use the -f flag or delete the previous env.')
+            sys.exit(2)
+
     lgr.info('creating virtual environment: {0}'.format(venv))
     _make_virtualenv(venv)
+
+    # install external
+    lgr.info('installing external modules...')
+    for ext_module in EXTERNAL_MODULES:
+        _install_module(ext_module, venv)
 
     # install base
     lgr.info('installing base modules...')
     _install_module(modules['base']['rest_client'], venv)
     _install_module(modules['base']['plugins_common'], venv)
     _install_module(modules['base']['script_plugin'], venv)
+    _install_module(modules['base']['diamond_plugin'], venv)
 
     # install management
-    lgr.debug('retrieiving management plugins code...')
-    manager_tmp_dir = _get_manager(modules['base']['rest_service'], venv)
+    lgr.debug('retrieiving management modules code...')
+    manager_tmp_dir = _get_manager(MANAGER_REPO_URL.format(version), venv)
 
     lgr.info('installing management modules...')
-    for mgmt_module in modules['management']:
-        _install_module(os.path.join(manager_tmp_dir, mgmt_module), venv)
+    for mgmt_module in modules['management'].values():
+        if os.path.isdir(os.path.join(manager_tmp_dir, mgmt_module)):
+            _install_module(os.path.join(manager_tmp_dir, mgmt_module), venv)
+        else:
+            _install_module(mgmt_module, venv)
 
     # install additional
     lgr.info('installing additional plugins...')
