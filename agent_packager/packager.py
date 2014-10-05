@@ -8,8 +8,11 @@ import shutil
 import requests
 import os
 import tarfile
+import sys
 
 DEFAULT_CONFIG_FILE = 'config.yaml'
+DEFAULT_OUTPUT_TAR_PATH = '{0}/{1}-agent.tar.gz'
+DEFAULT_VENV_PATH = '{0}/{1}-agent/env'
 
 MODULES = {
     'plugins_common': 'https://github.com/cloudify-cosmo/cloudify-rest-client/archive/{0}.tar.gz',  # NOQA
@@ -133,19 +136,54 @@ def _untar(source, destination):
 
 
 def create(config_file, verbose=True, cleanstart=True):
+    """Creates an agent package (tar.gz)
+
+    This will try to identify the distribution of the host you're running on.
+    If it can't identify it for some reason, you'll have to supply a
+    `distribution` config object in the config.yaml.
+
+    If not all `base` AND `management` modules are explicitly specified,
+    A `version` config object must be specified in the config.yaml as well.
+
+    A virtualenv will be created
+    The order of the modules' installation is as follows:
+
+    cloudify-rest-service
+    cloudify-plugins-common
+    cloudify-script-plugin
+    agent and plugin installers from cloudify-manager
+    any additional modules specified under `additional_modules` in the yaml.
+
+    When all modules are installed, a tar.gz file will be created. The
+    `output_tar` config object can be specified to determine the path to the
+    output file. If omitted, a default path will be given with the
+    format `BASE_DIR/DISTRIBUTION-agent.tar.gz`.
+    """
     _set_global_verbosity_level(verbose)
+
     config = _import_config(config_file) if config_file else _import_config()
-    lgr.debug('getting distribution...')
-    distro = config.get('distribution', platform.dist()[0])
-    base_venv_dir = config.get('base_venv_dir', '')
-    lgr.debug('distibution is: {0}'.format(distro))
-    venv = '{0}/{1}-agent/env'.format(base_venv_dir, distro)
-    lgr.debug('venv is: {0}'.format(venv))
+    try:
+        distro = config.get('distribution', platform.dist()[0])
+    except:
+        lgr.error('distribution not found in configuration '
+                  'and could not be retrieved automatically. '
+                  'please specify the distribution in the yaml.')
+        sys.exit(1)
+
+    base_dir = config.get('base_dir', '')
+    venv = config.get('venv', DEFAULT_VENV_PATH.format(base_dir, distro))
+
     try:
         version = config['version']
     except ValueError:
-        lgr.warning('must provide version if not all base '
-                    'modules are provided in config')
+        lgr.warning('version is mandatory if not all base and management '
+                    'modules are specified in the yaml.')
+
+    destination_tar = config.get('output_tar',
+                                 DEFAULT_OUTPUT_TAR_PATH.format(
+                                     base_dir, distro))
+    lgr.debug('distibution is: {0}'.format(distro))
+    lgr.debug('venv is: {0}'.format(venv))
 
     # create modules dictionary
     lgr.debug('retrieving modules to install...')
@@ -189,7 +227,6 @@ def create(config_file, verbose=True, cleanstart=True):
         _install_module(module, venv)
 
     # create agent tar
-    destination_tar = '/home/nir0s/{0}-agent.tar.gz'.format(distro)
     lgr.info('creating tar file: {0}'.format(destination_tar))
     _tar(venv, destination_tar)
 

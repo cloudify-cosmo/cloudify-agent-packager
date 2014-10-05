@@ -1,5 +1,5 @@
-repex
-=======
+Cloudify Agent Packager
+=======================
 
 `repex` replaces strings in single/multiple files based on regular expressions.
 
