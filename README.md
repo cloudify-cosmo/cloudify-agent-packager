@@ -16,11 +16,13 @@ This tool aims to:
 
 ### Installation
 
+NOTE: soon, you'll be able to instal this via pypi like this:
+
 ```shell
 pip install cloudify-agent-packager
 ```
 
-For development:
+Until then, use this:
 
 ```shell
 pip install https://github.com/cloudify-cosmo/cloudify-agent-packager/archive/master.tar.gz
@@ -56,7 +58,6 @@ Options:
 
 ```yaml
 distribution: Ubuntu
-version: 3.0
 venv: /home/nir0s/Ubuntu-agent/env
 python_path: /usr/bin/python
 base_modules:
@@ -64,11 +65,9 @@ base_modules:
     rest_client: https://github.com/cloudify-cosmo/cloudify-rest-client/archive/3.1m4.tar.gz
     script_plugin: https://github.com/cloudify-cosmo/cloudify-script-plugin/archive/1.1m4.tar.gz
     diamond_plugin: https://github.com/cloudify-cosmo/cloudify-diamond-plugin/archive/1.1m4.tar.gz
+management_modules_version: 3.1m4
 management_modules:
-    agent-installer: https://github.com/cloudify-cosmo/cloudify-fabric-plugin/archive/1.1m4.tar.gz
-    plugin-installer: https://github.com/cloudify-cosmo/cloudify-fabric-plugin/archive/1.1m4.tar.gz
-    windows-agent-installer: https://github.com/cloudify-cosmo/cloudify-fabric-plugin/archive/1.1m4.tar.gz
-    windows-plugin-installer: https://github.com/cloudify-cosmo/cloudify-fabric-plugin/archive/1.1m4.tar.gz
+    agent-installer: https://github.com/someone/cloudify-agent-installer/archive/1.0.tar.gz
 additional_modules:
     - pyzmq==14.3.1
     - https://github.com/cloudify-cosmo/cloudify-fabric-plugin/archive/1.1m4.tar.gz
@@ -77,13 +76,11 @@ output_tar: /home/nir0s/Ubuntu-agent.tar.gz
 
 #### Config YAML Explained
 
-NOTE: `version` is mandatory if not all `base` and `management` modules are provided in the config file. See below for the list of required modules.
-
-- `distribution` - Which distribution is this agent intended for. If this is omitted, the tool will try to retrieve the distribution by itself.
-- `version` - Which version of the `base` and `management` modules would you like to use? This is actually a release or branch name in Github. If `latest` is provided, `master` branch will be used.
+- `distribution` - Which distribution is this agent intended for. If this is omitted, the tool will try to retrieve the distribution by itself. The distribution is then used to name the virtualenv (if not explicitly specified in `venv`) and to name the output file (if not explicitly specified in `output_tar`).
 - `venv` - Path to the virtualenv you'd like to create.
 - `python_path` - CURRENTLY unused
-- `base_modules` - a `dict` of base modules to install into the package. This allows to override the defaults.
+- `base_modules` - a `dict` of base modules to install into the package. (All modules default to `master`)
+- `management_modules_version` - States which version of the `cloudify-manager` code to download from which the management_modules will be installed. This is required only if not all management modules are explicitly specified in `management_modules`. (Defaults to `master`).
 - `management_modules` - a `dict` of management modules to install into the package. If omitted, the original cloudify-manager code will be downloaded and all management modules will be installed from there.
 - `additional_modules` - a `dict` of additional modules to install into the package. This is where you can add your plugins.
 - `output_tar` - Path to the tar file you'd like to create.

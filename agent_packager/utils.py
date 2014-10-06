@@ -1,0 +1,76 @@
+from contextlib import closing
+import subprocess
+import logger
+import sys
+import requests
+import tarfile
+import os
+
+lgr = logger.init()
+
+
+def run(cmd):
+    """executes a command
+
+    :param string cmd: command to execute
+    """
+    p = subprocess.Popen(
+        cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    (stdout, stderr) = p.communicate()
+    lgr.debug('stdout: {0}'.format(stdout))
+    lgr.debug('stderr: {0}'.format(stderr))
+    p.stdout = stdout
+    p.strerr = stderr
+    return p
+
+
+def make_virtualenv(virtualenv_dir):
+    """creates a virtualenv
+
+    :param string virtualenv_dir: path of virtualenv to create
+    """
+    lgr.debug('virtualenv_dir: {0}'.format(virtualenv_dir))
+    p = run('virtualenv {0}'.format(virtualenv_dir))
+    if not p.returncode == 0:
+        lgr.error('could not create venv: {0}'.format(virtualenv_dir))
+        sys.exit(1)
+
+
+def install_module(module, venv):
+    """installs a module in a virtualenv
+
+    :param string module: module to install. can be a url or a path.
+    :param string venv: path of virtualenv to install in.
+    """
+    lgr.debug('installing {0} in venv {1}'.format(module, venv))
+    p = run('{1}/bin/pip install {0}'.format(module, venv))
+    if not p.returncode == 0:
+        lgr.error('could not install module: {0}'.format(module))
+        sys.exit(2)
+
+
+def download_file(url, destination):
+    """downloads a file to a destination
+    """
+    lgr.debug('downloading {0} to {1}...'.format(url, destination))
+    destination = destination if destination else url.split('/')[-1]
+    r = requests.get(url, stream=True)
+    if not r.status_code == 200:
+        lgr.error('could not download file: {0}'.format(url))
+        sys.exit(3)
+    with open(destination, 'wb') as f:
+        for chunk in r.iter_content(chunk_size=1024):
+            if chunk:  # filter out keep-alive new chunks
+                f.write(chunk)
+                f.flush()
+    return destination
+
+
+def tar(source, destination):
+    with closing(tarfile.open(destination, "w:gz")) as tar:
+        tar.add(source, arcname=os.path.basename(source))
+
+
+def untar(source, destination):
+    with tarfile.open(source, 'r:gz') as tar:
+        tar.extractall(destination)

@@ -18,7 +18,7 @@ from __future__ import absolute_import
 from docopt import docopt
 from agent_packager.logger import init
 from agent_packager.packager import _set_global_verbosity_level
-from agent_packager.packager import create
+from agent_packager.packager import create_agent_package
 
 lgr = init()
 
@@ -36,7 +36,7 @@ def ver_check():
 
 
 def agent_packager_run(o):
-    create(
+    create_agent_package(
         o.get('--config'),
         o.get('--force'),
         o.get('--verbose')

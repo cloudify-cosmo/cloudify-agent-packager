@@ -15,171 +15,187 @@
 
 __author__ = 'nir0s'
 
-from repex.repex import import_config
-from repex.logger import init
-from repex.repex import _set_global_verbosity_level
-from repex.repex import RepexError
-from repex.repex import iterate
-from repex.repex import Repex
-from repex.repex import handle_file
-from repex.repex import get_all_files
+import agent_packager.packager as ap
+# from agent_packager.logger import init
+import agent_packager.utils as utils
+# from requests import ConnectionError
 
-import unittest
+# from contextlib import closing
+import testtools
 import os
-from testfixtures import log_capture
-import logging
+# from testfixtures import log_capture
+# import logging
+import shutil
+from functools import wraps
+# import tarfile
 
 
-TEST_DIR = '{0}/test_dir'.format(os.path.expanduser("~"))
-TEST_FILE_NAME = 'test_file'
-TEST_FILE = TEST_DIR + '/' + TEST_FILE_NAME
-TEST_RESOURCES_DIR = 'repex/tests/resources/'
-TEST_RESOURCES_DIR_PATTERN = 'repex/tests/resource.*'
-MOCK_CONFIG_FILE = os.path.join(TEST_RESOURCES_DIR, 'mock_files.yaml')
-MOCK_CONFIG_MULTIPLE_FILES = os.path.join(TEST_RESOURCES_DIR,
-                                          'mock_multiple_files.yaml')
-MOCK_TEST_FILE = os.path.join(TEST_RESOURCES_DIR, 'mock_VERSION')
-BAD_CONFIG_FILE = os.path.join(TEST_RESOURCES_DIR, 'bad_mock_files.yaml')
-EMPTY_CONFIG_FILE = os.path.join(TEST_RESOURCES_DIR, 'empty_mock_files.yaml')
+TEST_RESOURCES_DIR = 'agent_packager/tests/resources/'
+CONFIG_FILE = os.path.join(TEST_RESOURCES_DIR, 'config_file.yaml')
+BAD_CONFIG_FILE = os.path.join(TEST_RESOURCES_DIR, 'bad_config_file.yaml')
+EMPTY_CONFIG_FILE = os.path.join(TEST_RESOURCES_DIR, 'empty_config_file.yaml')
+TEST_VENV = 'test_venv'
+TEST_FILE = 'https://github.com/cloudify-cosmo/cloudify-agent-packager/archive/master.tar.gz'  # NOQA
+MANAGER = 'https://github.com/cloudify-cosmo/cloudify-manager/archive/master.tar.gz'  # NOQA
 
 
-class TestBase(unittest.TestCase):
+def venv(func):
+    @wraps(func)
+    def execution_handler(*args, **kwargs):
+        utils.make_virtualenv(TEST_VENV)
+        func(*args, **kwargs)
+        shutil.rmtree(TEST_VENV)
+    return execution_handler
 
-    @log_capture()
-    def test_set_global_verbosity_level(self, capture):
-        lgr = init(base_level=logging.INFO)
 
-        _set_global_verbosity_level(is_verbose_output=False)
-        lgr.debug('TEST_LOGGER_OUTPUT')
-        capture.check()
-        lgr.info('TEST_LOGGER_OUTPUT')
-        capture.check(('user', 'INFO', 'TEST_LOGGER_OUTPUT'))
+class TestBase(testtools.TestCase):
 
-        _set_global_verbosity_level(is_verbose_output=True)
-        lgr.debug('TEST_LOGGER_OUTPUT')
-        capture.check(
-            ('user', 'INFO', 'TEST_LOGGER_OUTPUT'),
-            ('user', 'DEBUG', 'TEST_LOGGER_OUTPUT'))
+    # @log_capture()
+    # def test_set_global_verbosity_level(self, capture):
+    #     lgr = init(base_level=logging.INFO)
 
-    def test_import_config_file(self):
-        outcome = import_config(MOCK_CONFIG_FILE)
-        self.assertEquals(type(outcome), dict)
-        self.assertIn('paths', outcome.keys())
+    #     ap._set_global_verbosity_level(is_verbose_output=False)
+    #     lgr.debug('TEST_LOGGER_OUTPUT')
+    #     capture.check()
+    #     lgr.info('TEST_LOGGER_OUTPUT')
+    #     capture.check(('user', 'INFO', 'TEST_LOGGER_OUTPUT'))
 
-    def test_fail_import_config_file(self):
-        try:
-            import_config('')
-        except RuntimeError as ex:
-            self.assertEquals(str(ex), 'cannot access config file')
+    #     ap._set_global_verbosity_level(is_verbose_output=True)
+    #     lgr.debug('TEST_LOGGER_OUTPUT')
+    #     capture.check(
+    #         ('user', 'INFO', 'TEST_LOGGER_OUTPUT'),
+    #         ('user', 'DEBUG', 'TEST_LOGGER_OUTPUT'))
 
-    def test_import_bad_config_file_mapping(self):
-        try:
-            import_config(BAD_CONFIG_FILE)
-        except Exception as ex:
-            self.assertIn('mapping values are not allowed here', str(ex))
+    # def test_import_config_file(self):
+    #     outcome = ap._import_config(CONFIG_FILE)
+    #     self.assertEquals(type(outcome), dict)
+    #     self.assertIn('distribution', outcome.keys())
 
-    def test_import_bad_config_file(self):
-        try:
-            import_config(BAD_CONFIG_FILE)
-        except Exception as ex:
-            self.assertIn('mapping values are not allowed here', str(ex))
+    # def test_fail_import_config_file(self):
+    #     e = self.assertRaises(RuntimeError, ap._import_config, '')
+    #     self.assertEquals('cannot access config file', str(e))
 
-    def test_iterate_no_config_supplied(self):
-        try:
-            iterate()
-        except TypeError as ex:
-            self.assertIn('takes at least 1 argument', str(ex))
+    # def test_import_bad_config_file_mapping(self):
+    #     e = self.assertRaises(Exception, ap._import_config, BAD_CONFIG_FILE)
+    #     self.assertIn('mapping values are not allowed here', str(e))
 
-    def test_iterate_no_files(self):
-        try:
-            iterate(EMPTY_CONFIG_FILE)
-        except RepexError as ex:
-            self.assertEqual(str(ex), 'no paths configured')
+    # def test_import_bad_config_file(self):
+    #     e = self.assertRaises(Exception, ap._import_config, BAD_CONFIG_FILE)
+    #     self.assertIn('mapping values are not allowed here', str(e))
 
-    def test_iterate(self):
-        output_file = MOCK_TEST_FILE + '.test'
-        v = {'version': '3.1.0-m3'}
-        iterate(MOCK_CONFIG_FILE, v)
-        with open(output_file) as f:
-            self.assertIn('3.1.0-m3', f.read())
-        os.remove(output_file)
+    # def test_run(self):
+    #     p = utils.run('uname')
+    #     self.assertEqual(0, p.returncode)
 
-    def test_iterate_with_vars(self):
-        output_file = MOCK_TEST_FILE + '.test'
-        v = {'version': '3.1.0-m3'}
-        iterate(MOCK_CONFIG_FILE, v)
-        with open(output_file) as f:
-            self.assertIn('3.1.0-m3', f.read())
-        os.remove(output_file)
+    # def test_run_bad_command(self):
+    #     p = utils.run('suname')
+    #     self.assertEqual(127, p.returncode)
 
-    def test_iterate_variables_not_dict(self):
-        try:
-            iterate(MOCK_CONFIG_FILE, variables='x')
-        except RuntimeError as ex:
-            self.assertEqual(str(ex), 'variables must be of type dict')
+    # @venv
+    # def test_create_virtualenv(self):
+    #     if not os.path.exists('test_venv/bin/python'):
+    #         raise Exception('venv not created')
 
-    def test_file_string_not_found(self):
-        p = Repex(MOCK_TEST_FILE, 'NONEXISTING STRING', '', False)
-        self.assertFalse(p.validate_before(must_include=[]))
+    # def test_fail_create_virtualenv(self):
+    #     e = self.assertRaises(
+    #          SystemExit, utils.make_virtualenv, '/test_venv')
+    #     self.assertEqual('1', str(e))
 
-    def test_file_validation_failed(self):
-        file = {
-            'path': MOCK_TEST_FILE,
-            'match': 'MISSING_MATCH',
-            'replace': 'MISSING_PATTERN',
-            'with': '',
-            'to_file': MOCK_TEST_FILE + '.test',
-            'validate_before': True
-        }
-        try:
-            handle_file(file, verbose=True)
-        except RepexError as ex:
-            self.assertEqual(str(ex), 'prevalidation failed')
+    # @venv
+    # def test_install_module(self):
+    #     utils.install_module('xmltodict', TEST_VENV)
+    #     p = utils.run('test_venv/bin/pip freeze')
+    #     self.assertIn('xmltodict', p.stdout)
 
-    def test_file_no_permissions_to_write_to_file(self):
-        file = {
-            'path': MOCK_TEST_FILE,
-            'match': '3.1.0-m2',
-            'replace': '3.1.0-m2',
-            'with': '3.1.0-m3',
-            'to_file': '/mock.test'
-        }
-        try:
-            handle_file(file, verbose=True)
-        except IOError as ex:
-            self.assertIn('Permission denied', str(ex))
+    # @venv
+    # def test_fail_install_module(self):
+    #     e = self.assertRaises(
+    #         SystemExit, utils.install_module, 'BLAH!!', TEST_VENV)
+    #     self.assertEqual('2', str(e))
 
-    def test_file_must_include_missing(self):
-        file = {
-            'path': MOCK_TEST_FILE,
-            'match': '3.1.0-m2',
-            'replace': '3.1.0',
-            'with': '',
-            'to_file': MOCK_TEST_FILE + '.test',
-            'validate_before': True,
-            'must_include': [
-                'MISSING_INCLUSION'
-            ]
-        }
-        try:
-            handle_file(file, verbose=True)
-        except RepexError as ex:
-            self.assertEqual(str(ex), 'prevalidation failed')
+    # def test_fail_install_module_nonexistent_venv(self):
+    #     e = self.assertRaises(
+    #         SystemExit, utils.install_module, 'BLAH!!', TEST_VENV)
+    #     self.assertEqual('2', str(e))
 
-    def test_iterate_multiple_files(self):
-        v = {
-            'preversion': '3.1.0-m2',
-            'version': '3.1.0-m3'
-        }
-        iterate(MOCK_CONFIG_MULTIPLE_FILES, v)
-        files = get_all_files(
-            'mock_VERSION', TEST_RESOURCES_DIR_PATTERN, TEST_RESOURCES_DIR)
-        for fl in files:
-            with open(fl) as f:
-                self.assertIn('3.1.0-m3', f.read())
-        v['preversion'] = '3.1.0-m3'
-        v['version'] = '3.1.0-m2'
-        iterate(MOCK_CONFIG_MULTIPLE_FILES, v)
-        for fl in files:
-            with open(fl) as f:
-                self.assertIn('3.1.0-m2', f.read())
+    # def test_download_file(self):
+    #     utils.download_file(TEST_FILE, 'file')
+    #     if not os.path.isfile('file'):
+    #         raise Exception('file not downloaded')
+    #     os.remove('file')
+
+    # def test_download_file_missing(self):
+    #     e = self.assertRaises(
+    #         SystemExit, utils.download_file,
+    #         'http://www.google.com/x.tar.gz', 'file')
+    #     self.assertEqual('3', str(e))
+
+    # def test_download_bad_url(self):
+    #     e = self.assertRaises(
+    #         Exception, utils.download_file, 'something', 'file')
+    #     self.assertIn('Invalid URL', str(e))
+
+    # def test_download_connection_failed(self):
+    #     e = self.assertRaises(
+    #         ConnectionError, utils.download_file, 'http://something', 'file')
+    #     self.assertIn('Connection aborted', str(e))
+
+    # def test_download_missing_path(self):
+    #     e = self.assertRaises(
+    #         IOError, utils.download_file, TEST_FILE, 'x/file')
+    #     self.assertIn('No such file or directory', e)
+
+    # def test_download_no_permissions(self):
+    #     e = self.assertRaises(
+    #        IOError, utils.download_file, TEST_FILE, '/file')
+    #     self.assertIn('Permission denied', e)
+
+    # @venv
+    # def test_download_manager_code(self):
+    #     d = ap._get_manager(MANAGER, TEST_VENV)
+    #     self.assertTrue(os.path.isdir(os.path.join(d, 'plugins/plugin-installer')))  # NOQA
+    #     self.assertTrue(os.path.isdir(os.path.join(d, 'plugins/agent-installer')))  # NOQA
+    #     self.assertTrue(os.path.isdir(os.path.join(d, 'plugins/windows-plugin-installer')))  # NOQA
+    #     self.assertTrue(os.path.isdir(os.path.join(d, 'plugins/windows-agent-installer')))  # NOQA
+    #     shutil.rmtree(d)
+
+    # @venv
+    # def test_tar(self):
+    #     utils.tar(TEST_VENV, 'file')
+    #     self.assertTrue(tarfile.is_tarfile('file'))
+    #     with closing(tarfile.open('file', 'r:gz')) as tar:
+    #         members = tar.getnames()
+    #         self.assertIn('test_venv/bin/python', members)
+    #     os.remove('file')
+
+    # @venv
+    # def test_tar_no_permissions(self):
+    #     e = self.assertRaises(IOError, utils.tar, TEST_VENV, '/file')
+    #     self.assertIn('Permission denied', e)
+
+    # @venv
+    # def test_tar_missing_source(self):
+    #     e = self.assertRaises(OSError, utils.tar, 'missing', 'file')
+    #     self.assertIn('No such file or directory', e)
+
+    def test_create_agent_package(self):
+        config = ap._import_config(CONFIG_FILE)
+        ap.create_agent_package(CONFIG_FILE, force=True, verbose=True)
+        shutil.rmtree(config['venv'])
+        os.makedirs(config['venv'])
+        utils.run('tar -xzvf {0} -C {1} --strip-components=1'.format(
+            config['output_tar'], config['venv']))
+        # os.remove(config['output_tar'])
+        self.assertTrue(os.path.isdir(config['venv']))
+        p = utils.run('{0}/bin/pip freeze'.format(config['venv']))
+        self.assertIn('cloudify-plugins-common', p.stdout)
+        self.assertIn('cloudify-rest-client', p.stdout)
+        self.assertIn('cloudify-diamond-plugin', p.stdout)
+        self.assertIn('cloudify-script-plugin', p.stdout)
+        # shutil.rmtree(config['venv'])
+
+    # @venv
+    # def test_create_agent_package_existing_venv_no_force(self):
+    #     e = self.assertRaises(
+    #         SystemExit, ap.create_agent_package, CONFIG_FILE, verbose=True)
+    #     self.assertEqual(str(e), '2')
