@@ -78,10 +78,10 @@ output_tar: /home/nir0s/Ubuntu-agent.tar.gz
 
 - `distribution` - Which distribution is this agent intended for. If this is omitted, the tool will try to retrieve the distribution by itself. The distribution is then used to name the virtualenv (if not explicitly specified in `venv`) and to name the output file (if not explicitly specified in `output_tar`).
 - `venv` - Path to the virtualenv you'd like to create.
-- `python_path` - CURRENTLY unused
-- `base_modules` - a `dict` of base modules to install into the package. (All modules default to `master`)
+- `python_path` - Allows you to set the python binary to be used when creating `venv`. (Defaults to `/usr/bin/python`).
+- `base_modules` - a `dict` of base modules to install into the package. (All modules default to `master`). See below for a list of current base modules. If `none` is set (per module), it will not be installed. Set `none` with extra care!
 - `management_modules_version` - States which version of the `cloudify-manager` code to download from which the management_modules will be installed. This is required only if not all management modules are explicitly specified in `management_modules`. (Defaults to `master`).
-- `management_modules` - a `dict` of management modules to install into the package. If omitted, the original cloudify-manager code will be downloaded and all management modules will be installed from there.
+- `management_modules` - a `dict` of management modules to install into the package. If omitted, the original cloudify-manager code will be downloaded and all management modules will be installed from there. See below for a list of current management modules. If `none` is set (per module), it will not be installed. Set `none` with extra care!
 - `additional_modules` - a `dict` of additional modules to install into the package. This is where you can add your plugins.
 - `output_tar` - Path to the tar file you'd like to create.
 
@@ -105,4 +105,4 @@ Currently, these are the base management modules required for the agent:
 
 #### Additional modules:
 
-Note that if you want to use ZeroMQ in the script plugin, you'll have to explicitly configure it in the `additional_modules` section as shown above.
+Note that if you want to use ZeroMQ in the [script plugin](https://github.com/cloudify-cosmo/cloudify-script-plugin/) and wish to use the ZeroMQ Proxy, you'll have to explicitly configure it in the `additional_modules` section as shown above.

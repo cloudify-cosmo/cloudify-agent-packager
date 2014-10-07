@@ -145,11 +145,13 @@ def create_agent_package(config_file, force=False, verbose=True):
                   'please specify the distribution in the yaml.')
         sys.exit(1)
 
+    python = config.get('python_path', '/usr/bin/python')
     venv = config.get('venv', DEFAULT_VENV_PATH.format(distro))
     destination_tar = config.get('output_tar',
                                  DEFAULT_OUTPUT_TAR_PATH.format(distro))
 
     lgr.debug('distibution is: {0}'.format(distro))
+    lgr.debug('python path is: {0}'.format(python))
     lgr.debug('venv is: {0}'.format(venv))
     lgr.debug('destination tarfile is: {0}'.format(destination_tar))
 
@@ -176,7 +178,7 @@ def create_agent_package(config_file, force=False, verbose=True):
             sys.exit(2)
 
     lgr.info('creating virtual environment: {0}'.format(venv))
-    utils.make_virtualenv(venv)
+    utils.make_virtualenv(venv, python)
 
     # install external
     lgr.info('installing external modules...')
@@ -185,11 +187,15 @@ def create_agent_package(config_file, force=False, verbose=True):
 
     # install base
     lgr.info('installing base modules...')
-    utils.install_module(modules['base']['rest_client'], venv)
-    utils.install_module(modules['base']['plugins_common'], venv)
-    utils.install_module(modules['base']['script_plugin'], venv)
-    if modules['base']['diamond_plugin']:
-        utils.install_module(modules['base']['diamond_plugin'], venv)
+    base = modules['base']
+    if base.get('rest_client'):
+        utils.install_module(base['rest_client'], venv)
+    if base.get('plugins_common'):
+        utils.install_module(base['plugins_common'], venv)
+    if base.get('script_plugin'):
+        utils.install_module(base['script_plugin'], venv)
+    if base.get(bool('diamond_plugin')):
+        utils.install_module(base['diamond_plugin'], venv)
 
     # install management
     lgr.debug('retrieiving management modules code...')
@@ -202,7 +208,8 @@ def create_agent_package(config_file, force=False, verbose=True):
             utils.install_module(os.path.join(
                 manager_tmp_dir, mgmt_module), venv)
         else:
-            utils.install_module(mgmt_module, venv)
+            if mgmt_module:
+                utils.install_module(mgmt_module, venv)
 
     # install additional
     lgr.info('installing additional plugins...')

@@ -24,13 +24,13 @@ def run(cmd):
     return p
 
 
-def make_virtualenv(virtualenv_dir):
+def make_virtualenv(virtualenv_dir, python='/usr/bin/python'):
     """creates a virtualenv
 
     :param string virtualenv_dir: path of virtualenv to create
     """
     lgr.debug('virtualenv_dir: {0}'.format(virtualenv_dir))
-    p = run('virtualenv {0}'.format(virtualenv_dir))
+    p = run('virtualenv -p {0} {1}'.format(python, virtualenv_dir))
     if not p.returncode == 0:
         lgr.error('could not create venv: {0}'.format(virtualenv_dir))
         sys.exit(1)
