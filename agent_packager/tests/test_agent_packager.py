@@ -97,9 +97,15 @@ class TestBase(testtools.TestCase):
         if not os.path.exists('{0}/bin/python'.format(TEST_VENV)):
             raise Exception('venv not created')
 
-    def test_fail_create_virtualenv(self):
+    def test_fail_create_virtualenv_bad_dir(self):
         e = self.assertRaises(
             SystemExit, utils.make_virtualenv, '/' + TEST_VENV)
+        self.assertEqual('1', str(e))
+
+    def test_fail_create_virtualenv_missing_python(self):
+        e = self.assertRaises(
+            SystemExit, utils.make_virtualenv, TEST_VENV,
+            '/usr/bin/missing_python')
         self.assertEqual('1', str(e))
 
     @venv
@@ -177,21 +183,20 @@ class TestBase(testtools.TestCase):
 
     @venv
     def test_tar_no_permissions(self):
-        e = self.assertRaises(IOError, utils.tar, TEST_VENV, '/file')
-        self.assertIn('Permission denied', e)
+        e = self.assertRaises(SystemExit, utils.tar, TEST_VENV, '/file')
+        self.assertIn(str(e), '10')
 
     @venv
     def test_tar_missing_source(self):
-        e = self.assertRaises(OSError, utils.tar, 'missing', 'file')
-        self.assertIn('No such file or directory', e)
+        e = self.assertRaises(SystemExit, utils.tar, 'missing', 'file')
+        self.assertIn(str(e), '10')
         os.remove('file')
 
     def test_create_agent_package(self):
         config = ap._import_config(CONFIG_FILE)
         ap.create_agent_package(CONFIG_FILE, force=True, verbose=True)
-        shutil.rmtree(config['venv'])
         os.makedirs(config['venv'])
-        utils.run('tar -xzvf {0} -C {1} --strip-components=1'.format(
+        utils.run('tar -xzvf {0} -C {1} --strip-components=2'.format(
             config['output_tar'], config['venv']))
         os.remove(config['output_tar'])
         self.assertTrue(os.path.isdir(config['venv']))
@@ -207,3 +212,14 @@ class TestBase(testtools.TestCase):
         e = self.assertRaises(
             SystemExit, ap.create_agent_package, CONFIG_FILE, verbose=True)
         self.assertEqual(str(e), '2')
+
+    @venv
+    def test_create_agent_package_tar_already_exists(self):
+        config = ap._import_config(CONFIG_FILE)
+        shutil.rmtree(config['venv'])
+        with open(config['output_tar'], 'w') as a:
+            a.write('CONTENT')
+        e = self.assertRaises(
+            SystemExit, ap.create_agent_package, CONFIG_FILE, verbose=True)
+        self.assertEqual(str(e), '9')
+        os.remove(config['output_tar'])

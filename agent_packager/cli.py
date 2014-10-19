@@ -9,7 +9,7 @@ Usage:
 Options:
     -h --help                   Show this screen
     -c --config=<path>          Path to config yaml (defaults to config.yaml)
-    -f --force                  Forces deletion and creation of venv
+    -f --force                  Forces deletion and creation of venv and tar file.
     -v --verbose                verbose level logging
     --version                   Display current version
 """

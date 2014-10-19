@@ -1,10 +1,10 @@
-from contextlib import closing
+# from contextlib import closing
 import subprocess
 import logger
 import sys
 import requests
 import tarfile
-import os
+# import os
 
 lgr = logger.init()
 
@@ -67,8 +67,16 @@ def download_file(url, destination):
 
 
 def tar(source, destination):
-    with closing(tarfile.open(destination, "w:gz")) as tar:
-        tar.add(source, arcname=os.path.basename(source))
+    # TODO: solve or depracate..
+    # TODO: apparently, it will tar the first child dir of
+    # TODO: source, and not the given parent.
+    # with closing(tarfile.open(destination, "w:gz")) as tar:
+    #     tar.add(source, arcname=os.path.basename(source))
+    # WORKAROUND IMPLEMENTATION
+    r = run('tar czvf {0} {1}'.format(destination, source))
+    if not r.returncode == 0:
+        lgr.error('failed to create tar file.')
+        sys.exit(10)
 
 
 def untar(source, destination):

@@ -5,14 +5,14 @@ This tool creates Cloudify agent packages.
 
 ### Overview
 
-Cloudify's Agents are basically a virtualenv with a series of modules installed in it with a few configuration files attached.
+Cloudify's Agent is basically a virtualenv with a series of modules installed in it and a few configuration files attached.
 
 This tool aims to:
 - Solve the problem of compiling module requirements on different distributions, thus bridging the gap of user compiled images, unfamiliar/minor distros and so on.
 - Allow users to create their own, personalized Cloudify agents with custom plugins of their choosing.
 - Make the agent creation process seamless. One config file. One liner cmd.
 - Allow users to override the `agent-installer` and `plugin-installer` modules so that they can implement their own.
-
+- Allow users to decide whether they want to have the `diamond-plugin` built into the agent.
 
 ### Installation
 
@@ -48,11 +48,10 @@ Usage:
 Options:
     -h --help                   Show this screen
     -c --config=<path>          Path to config yaml (defaults to config.yaml)
-    -f --force                  Forces deletion and creation of venv
+    -f --force                  Forces deletion and creation of venv and tar file.
     -v --verbose                verbose level logging
     --version                   Display current version
 ```
-
 
 ### The YAML config file
 
@@ -72,6 +71,7 @@ additional_modules:
     - pyzmq==14.3.1
     - https://github.com/cloudify-cosmo/cloudify-fabric-plugin/archive/1.1m4.tar.gz
 output_tar: /home/nir0s/Ubuntu-agent.tar.gz
+keep_venv: true
 ```
 
 #### Config YAML Explained
@@ -84,6 +84,7 @@ output_tar: /home/nir0s/Ubuntu-agent.tar.gz
 - `management_modules` - a `dict` of management modules to install into the package. If omitted, the original cloudify-manager code will be downloaded and all management modules will be installed from there. See below for a list of current management modules. If `none` is set (per module), it will not be installed. Set `none` with extra care!
 - `additional_modules` - a `dict` of additional modules to install into the package. This is where you can add your plugins.
 - `output_tar` - Path to the tar file you'd like to create.
+- `keep_venv` - Whether to keep the virtualenv after creating the tar file or not. Defaults to false.
 
 #### Base Modules:
 

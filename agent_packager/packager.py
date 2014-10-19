@@ -102,6 +102,7 @@ def _get_manager(source, venv):
     lgr.debug('downloading manager code from: {0}'.format(source))
     utils.download_file(source, tmp_tar)
     # TODO: find a workaround for strip-components using tarfile
+    # TODO: check if tar before untaring
     lgr.debug('extracting {0} to {1}'.format(tmp_tar, manager_tmp_dir))
     utils.run('tar -xzvf {0} -C {1} --strip-components=1'.format(
         tmp_tar, manager_tmp_dir))
@@ -115,10 +116,6 @@ def create_agent_package(config_file, force=False, verbose=True):
     If it can't identify it for some reason, you'll have to supply a
     `distribution` config object in the config.yaml.
 
-    If not all `base` AND `management` modules are explicitly specified,
-    A `version` config object must be specified in the config.yaml as well,
-    which will be used to retrieve the corrent version of the module.
-
     A virtualenv will be created under `/DISTRIBUTION-agent/env` unless
     configured in the yaml under the `venv` property.
     The order of the modules' installation is as follows:
@@ -126,6 +123,7 @@ def create_agent_package(config_file, force=False, verbose=True):
     cloudify-rest-service
     cloudify-plugins-common
     cloudify-script-plugin
+    cloudify-diamond-plugin
     agent and plugin installers from cloudify-manager
     any additional modules specified under `additional_modules` in the yaml.
 
@@ -147,6 +145,7 @@ def create_agent_package(config_file, force=False, verbose=True):
 
     python = config.get('python_path', '/usr/bin/python')
     venv = config.get('venv', DEFAULT_VENV_PATH.format(distro))
+    keep_venv = config.get('keep_venv', False)
     destination_tar = config.get('output_tar',
                                  DEFAULT_OUTPUT_TAR_PATH.format(distro))
 
@@ -154,17 +153,6 @@ def create_agent_package(config_file, force=False, verbose=True):
     lgr.debug('python path is: {0}'.format(python))
     lgr.debug('venv is: {0}'.format(venv))
     lgr.debug('destination tarfile is: {0}'.format(destination_tar))
-
-    # create modules dictionary
-    lgr.debug('retrieving modules to install...')
-    modules = {}
-    modules['base'] = BASE_MODULES
-    modules['management'] = MANAGEMENT_MODULES
-    modules['additional'] = []
-    modules = _merge_modules(modules, config)
-
-    lgr.debug('modules to install: {0}'.format(json.dumps(
-        modules, sort_keys=True, indent=4, separators=(',', ': '))))
 
     # virtualenv
     if os.path.isdir(venv):
@@ -179,6 +167,26 @@ def create_agent_package(config_file, force=False, verbose=True):
 
     lgr.info('creating virtual environment: {0}'.format(venv))
     utils.make_virtualenv(venv, python)
+
+    # output file
+    if os.path.isfile(destination_tar) and force:
+        lgr.info('removing previous agent package...')
+        os.remove(destination_tar)
+    if os.path.exists(destination_tar):
+            lgr.error('destination tar already exists: {0}'.format(
+                destination_tar))
+            sys.exit(9)
+
+    # create modules dictionary
+    lgr.debug('retrieving modules to install...')
+    modules = {}
+    modules['base'] = BASE_MODULES
+    modules['management'] = MANAGEMENT_MODULES
+    modules['additional'] = []
+    modules = _merge_modules(modules, config)
+
+    lgr.debug('modules to install: {0}'.format(json.dumps(
+        modules, sort_keys=True, indent=4, separators=(',', ': '))))
 
     # install external
     lgr.info('installing external modules...')
@@ -219,6 +227,9 @@ def create_agent_package(config_file, force=False, verbose=True):
     # create agent tar
     lgr.info('creating tar file: {0}'.format(destination_tar))
     utils.tar(venv, destination_tar)
+    if not keep_venv:
+        lgr.info('removing origin venv')
+        shutil.rmtree(venv)
 
 
 class PackagerError(Exception):
