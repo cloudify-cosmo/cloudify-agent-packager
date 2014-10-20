@@ -53,6 +53,12 @@ Options:
     --version                   Display current version
 ```
 
+example:
+
+```
+cfy-ap -f -c my_config.yaml -v
+```
+
 ### The YAML config file
 
 ```yaml
@@ -77,12 +83,12 @@ keep_venv: true
 #### Config YAML Explained
 
 - `distribution` - Which distribution is this agent intended for. If this is omitted, the tool will try to retrieve the distribution by itself. The distribution is then used to name the virtualenv (if not explicitly specified in `venv`) and to name the output file (if not explicitly specified in `output_tar`).
-- `venv` - Path to the virtualenv you'd like to create.
+- `venv` - Path to the virtualenv you'd like to create. You must leave this empty if you want to use the built in agent installer, which requires sudo privileges.
 - `python_path` - Allows you to set the python binary to be used when creating `venv`. (Defaults to `/usr/bin/python`).
 - `base_modules` - a `dict` of base modules to install into the package. (All modules default to `master`). See below for a list of current base modules. If `none` is set (per module), it will not be installed. Set `none` with extra care!
 - `management_modules_version` - States which version of the `cloudify-manager` code to download from which the management_modules will be installed. This is required only if not all management modules are explicitly specified in `management_modules`. (Defaults to `master`).
 - `management_modules` - a `dict` of management modules to install into the package. If omitted, the original cloudify-manager code will be downloaded and all management modules will be installed from there. See below for a list of current management modules. If `none` is set (per module), it will not be installed. Set `none` with extra care!
-- `additional_modules` - a `dict` of additional modules to install into the package. This is where you can add your plugins.
+- `additional_modules` - a `list` of additional modules to install into the package. This is where you can add your plugins.
 - `output_tar` - Path to the tar file you'd like to create.
 - `keep_venv` - Whether to keep the virtualenv after creating the tar file or not. Defaults to false.
 
