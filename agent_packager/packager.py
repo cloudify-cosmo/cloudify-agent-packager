@@ -127,7 +127,7 @@ def create_agent_package(config_file, force=False, verbose=True):
     agent and plugin installers from cloudify-manager
     any additional modules specified under `additional_modules` in the yaml.
 
-    When all modules are installed, a tar.gz file will be created. The
+    Once all modules are installed, a tar.gz file will be created. The
     `output_tar` config object can be specified to determine the path to the
     output file. If omitted, a default path will be given with the
     format `/DISTRIBUTION-agent.tar.gz`.
@@ -137,10 +137,11 @@ def create_agent_package(config_file, force=False, verbose=True):
     config = _import_config(config_file) if config_file else _import_config()
     try:
         distro = config.get('distribution', platform.dist()[0])
-    except:
+    except Exception as ex:
         lgr.error('distribution not found in configuration '
                   'and could not be retrieved automatically. '
-                  'please specify the distribution in the yaml.')
+                  'please specify the distribution in the yaml. '
+                  '({0})'.format(ex.message))
         sys.exit(1)
 
     python = config.get('python_path', '/usr/bin/python')
