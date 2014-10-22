@@ -195,6 +195,8 @@ class TestBase(testtools.TestCase):
     def test_create_agent_package(self):
         config = ap._import_config(CONFIG_FILE)
         ap.create_agent_package(CONFIG_FILE, force=True, verbose=True)
+        if os.path.isdir(config['venv']):
+            raise Exception('venv exists before extracting agent.')
         os.makedirs(config['venv'])
         utils.run('tar -xzvf {0} -C {1} --strip-components=2'.format(
             config['output_tar'], config['venv']))
@@ -203,8 +205,8 @@ class TestBase(testtools.TestCase):
         p = utils.run('{0}/bin/pip freeze'.format(config['venv']))
         self.assertIn('cloudify-plugins-common', p.stdout)
         self.assertIn('cloudify-rest-client', p.stdout)
-        self.assertNotIn('cloudify-diamond-plugin', p.stdout)
         self.assertIn('cloudify-script-plugin', p.stdout)
+        self.assertNotIn('cloudify-diamond-plugin', p.stdout)
         shutil.rmtree(config['venv'])
 
     @venv

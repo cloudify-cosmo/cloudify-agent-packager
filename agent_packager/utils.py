@@ -1,10 +1,10 @@
 # from contextlib import closing
+# import os
 import subprocess
 import logger
 import sys
 import requests
 import tarfile
-# import os
 
 lgr = logger.init()
 
@@ -63,7 +63,6 @@ def download_file(url, destination):
             if chunk:  # filter out keep-alive new chunks
                 f.write(chunk)
                 f.flush()
-    return destination
 
 
 def tar(source, destination):

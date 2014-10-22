@@ -1,7 +1,7 @@
 Cloudify Agent Packager
 =======================
 
-This tool creates Cloudify agent packages.
+This tool creates Cloudify agent packages (Linux Only!).
 
 ### Overview
 
@@ -13,6 +13,20 @@ This tool aims to:
 - Make the agent creation process seamless. One config file. One liner cmd.
 - Allow users to override the `agent-installer` and `plugin-installer` modules so that they can implement their own.
 - Allow users to decide whether they want to have the `diamond-plugin` built into the agent.
+
+The tool will create a tar file to be used with Cloudify's [agent installer plugin](https://github.com/cloudify-cosmo/cloudify-manager/tree/master/plugins/agent-installer).
+
+Cloudify's agent is originally supplied with 3 additional files:
+
+- a disable requiretty script.
+- a template for celery's config file.
+- a template for celery's init file.
+
+This tool does not provide these files - as different distributions might require different init files or require a different method for disabling requiretty.
+You can obtain the files from [here](https://github.com/cloudify-cosmo/cloudify-packager/tree/master/package-configuration/ubuntu-agent).
+You must change the names of the files to match the distribution you're using as the distribution is automatically identified upon installation (or, alternatively, you can specify the distribution name in your blueprint under `cloudify_agent` in the `distro` property.)
+
+After creating the tool and obtaining the files, you can use the fabric task `upload_agent_to_manager` to upload your agent to the manager. You can read about running the task [here](https://github.com/cloudify-cosmo/cloudify-cli-fabric-tasks).
 
 ### Installation
 
