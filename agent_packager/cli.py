@@ -16,11 +16,10 @@ Options:
 
 from __future__ import absolute_import
 from docopt import docopt
-from agent_packager.logger import init
-from agent_packager.packager import _set_global_verbosity_level
-from agent_packager.packager import create_agent_package
+import agent_packager.logger as logger
+import agent_packager.packager as packager
 
-lgr = init()
+lgr = logger.init()
 
 
 def ver_check():
@@ -36,10 +35,10 @@ def ver_check():
 
 
 def agent_packager_run(o):
-    create_agent_package(
-        o.get('--config'),
-        o.get('--force'),
-        o.get('--verbose')
+    packager.create(
+        config_file=o.get('--config'),
+        force=o.get('--force'),
+        verbose=o.get('--verbose')
         )
 
 
@@ -47,7 +46,7 @@ def agent_packager(test_options=None):
     """Main entry point for script."""
     version = ver_check()
     options = test_options or docopt(__doc__, version=version)
-    _set_global_verbosity_level(options.get('--verbose'))
+    packager._set_global_verbosity_level(options.get('--verbose'))
     lgr.debug(options)
     agent_packager_run(options)
 

@@ -34,7 +34,8 @@ TEST_RESOURCES_DIR = 'agent_packager/tests/resources/'
 CONFIG_FILE = os.path.join(TEST_RESOURCES_DIR, 'config_file.yaml')
 BAD_CONFIG_FILE = os.path.join(TEST_RESOURCES_DIR, 'bad_config_file.yaml')
 EMPTY_CONFIG_FILE = os.path.join(TEST_RESOURCES_DIR, 'empty_config_file.yaml')
-TEST_VENV = 'test_venv/env'
+BASE_DIR = 'cloudify/test_venv'
+TEST_VENV = os.path.join(BASE_DIR, 'env')
 TEST_MODULE = 'xmltodict'
 TEST_FILE = 'https://github.com/cloudify-cosmo/cloudify-agent-packager/archive/master.tar.gz'  # NOQA
 MANAGER = 'https://github.com/cloudify-cosmo/cloudify-manager/archive/master.tar.gz'  # NOQA
@@ -194,12 +195,12 @@ class TestBase(testtools.TestCase):
 
     def test_create_agent_package(self):
         config = ap._import_config(CONFIG_FILE)
-        ap.create_agent_package(CONFIG_FILE, force=True, verbose=True)
+        ap.create(None, CONFIG_FILE, force=True, verbose=True)
         if os.path.isdir(config['venv']):
             raise Exception('venv exists before extracting agent.')
         os.makedirs(config['venv'])
         utils.run('tar -xzvf {0} -C {1} --strip-components=2'.format(
-            config['output_tar'], config['venv']))
+            config['output_tar'], BASE_DIR))
         os.remove(config['output_tar'])
         self.assertTrue(os.path.isdir(config['venv']))
         p = utils.run('{0}/bin/pip freeze'.format(config['venv']))
@@ -212,7 +213,7 @@ class TestBase(testtools.TestCase):
     @venv
     def test_create_agent_package_existing_venv_no_force(self):
         e = self.assertRaises(
-            SystemExit, ap.create_agent_package, CONFIG_FILE, verbose=True)
+            SystemExit, ap.create, None, CONFIG_FILE, verbose=True)
         self.assertEqual(str(e), '2')
 
     @venv
@@ -222,6 +223,6 @@ class TestBase(testtools.TestCase):
         with open(config['output_tar'], 'w') as a:
             a.write('CONTENT')
         e = self.assertRaises(
-            SystemExit, ap.create_agent_package, CONFIG_FILE, verbose=True)
+            SystemExit, ap.create, None, CONFIG_FILE, verbose=True)
         self.assertEqual(str(e), '9')
         os.remove(config['output_tar'])

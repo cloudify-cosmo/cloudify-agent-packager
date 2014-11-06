@@ -11,8 +11,8 @@ import utils
 
 
 DEFAULT_CONFIG_FILE = 'config.yaml'
-DEFAULT_OUTPUT_TAR_PATH = '/{0}-agent.tar.gz'
-DEFAULT_VENV_PATH = '/{0}-agent/env'
+DEFAULT_OUTPUT_TAR_PATH = '{0}-{1}-agent.tar.gz'
+DEFAULT_VENV_PATH = 'cloudify/{0}-{1}-agent/env'
 
 EXTERNAL_MODULES = [
     'celery==3.0.24'
@@ -109,7 +109,7 @@ def _get_manager(source, venv):
     return manager_tmp_dir
 
 
-def create_agent_package(config_file, force=False, verbose=True):
+def create(config=None, config_file=None, force=False, verbose=True):
     """Creates an agent package (tar.gz)
 
     This will try to identify the distribution of the host you're running on.
@@ -134,9 +134,13 @@ def create_agent_package(config_file, force=False, verbose=True):
     """
     _set_global_verbosity_level(verbose)
 
-    config = _import_config(config_file) if config_file else _import_config()
+    if not config:
+        config = _import_config(config_file) if config_file else \
+            _import_config()
+        config = {} if not config else config
     try:
         distro = config.get('distribution', platform.dist()[0])
+        release = config.get('release', platform.dist()[2])
     except Exception as ex:
         lgr.error('distribution not found in configuration '
                   'and could not be retrieved automatically. '
@@ -145,12 +149,14 @@ def create_agent_package(config_file, force=False, verbose=True):
         sys.exit(1)
 
     python = config.get('python_path', '/usr/bin/python')
-    venv = config.get('venv', DEFAULT_VENV_PATH.format(distro))
+    venv = config.get('venv', DEFAULT_VENV_PATH.format(distro, release))
     keep_venv = config.get('keep_venv', False)
     destination_tar = config.get('output_tar',
-                                 DEFAULT_OUTPUT_TAR_PATH.format(distro))
+                                 DEFAULT_OUTPUT_TAR_PATH.format(
+                                     distro, release))
 
     lgr.debug('distibution is: {0}'.format(distro))
+    lgr.debug('distribution release is: {0}'.format(release))
     lgr.debug('python path is: {0}'.format(python))
     lgr.debug('venv is: {0}'.format(venv))
     lgr.debug('destination tarfile is: {0}'.format(destination_tar))
@@ -197,6 +203,7 @@ def create_agent_package(config_file, force=False, verbose=True):
     # install base
     lgr.info('installing base modules...')
     base = modules['base']
+
     if base.get('rest_client'):
         utils.install_module(base['rest_client'], venv)
     if base.get('plugins_common'):

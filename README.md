@@ -73,11 +73,22 @@ example:
 cfy-ap -f -c my_config.yaml -v
 ```
 
+To use this from python, do the following:
+
+```python
+import agent_packager.packager as cfyap
+
+config = {}  # dict containing the configuration as given in the yaml file.
+
+cfyap.create(config=config, config_file=None, force=False, verbose=True)
+```
+
 ### The YAML config file
 
 ```yaml
 distribution: Ubuntu
-venv: /home/nir0s/Ubuntu-agent/env
+release: trusty
+venv: cloudify/Ubuntu-trusty-agent/env
 python_path: /usr/bin/python
 base_modules:
     plugins_common: https://github.com/cloudify-cosmo/cloudify-plugins-common/archive/3.1m4.tar.gz
@@ -96,8 +107,9 @@ keep_venv: true
 
 #### Config YAML Explained
 
-- `distribution` - Which distribution is this agent intended for. If this is omitted, the tool will try to retrieve the distribution by itself. The distribution is then used to name the virtualenv (if not explicitly specified in `venv`) and to name the output file (if not explicitly specified in `output_tar`).
-- `venv` - Path to the virtualenv you'd like to create. You must leave this empty if you want to use the built in agent installer, which requires sudo privileges.
+- `distribution` - Which distribution is the agent intended for. If this is omitted, the tool will try to retrieve the distribution by itself. The distribution is then used to name the virtualenv (if not explicitly specified in `venv`) and to name the output file (if not explicitly specified in `output_tar`).
+- `release` - Which release (e.g. precise, trusty) of the `distribution` is the agent intended for. If this is omitted, the tool will try to retrieve the release by itself. The release is then used to name the virtualenv (if not explicitly specified in `venv`) and to name the output file (if not explicitly specified in `output_tar').
+- `venv` - Path to the virtualenv you'd like to create. Leave this empty iNf you want to use the built in agent installer, which requires sudo privileges (Defaults to /cloudify/DISTRO-VERSION-agent/env).
 - `python_path` - Allows you to set the python binary to be used when creating `venv`. (Defaults to `/usr/bin/python`).
 - `base_modules` - a `dict` of base modules to install into the package. (All modules default to `master`). See below for a list of current base modules. If `none` is set (per module), it will not be installed. Set `none` with extra care!
 - `management_modules_version` - States which version of the `cloudify-manager` code to download from which the management_modules will be installed. This is required only if not all management modules are explicitly specified in `management_modules`. (Defaults to `master`).

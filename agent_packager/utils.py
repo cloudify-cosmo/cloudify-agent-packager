@@ -43,7 +43,11 @@ def install_module(module, venv):
     :param string venv: path of virtualenv to install in.
     """
     lgr.debug('installing {0} in venv {1}'.format(module, venv))
-    p = run('{1}/bin/pip install {0}'.format(module, venv))
+    if module == 'pre':
+        pip_cmd = '{1}/bin/pip install {0} --pre'.format(module, venv)
+    else:
+        pip_cmd = '{1}/bin/pip install {0}'.format(module, venv)
+    p = run(pip_cmd)
     if not p.returncode == 0:
         lgr.error('could not install module: {0}'.format(module))
         sys.exit(2)
