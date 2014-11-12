@@ -1,7 +1,7 @@
 Cloudify Agent Packager
 =======================
 
-This tool creates Cloudify agent packages (Linux Only!).
+This tool creates Cloudify agent packages (For now, Linux Only!).
 
 ### Overview
 
@@ -24,13 +24,16 @@ Cloudify's agent is originally supplied with 3 additional files:
 
 This tool does not provide these files - as different distributions might require different init files or require a different method for disabling requiretty.
 You can obtain the files from [here](https://github.com/cloudify-cosmo/cloudify-packager/tree/master/package-configuration/ubuntu-agent).
-You must change the names of the files to match the distribution you're using as the distribution is automatically identified upon installation (or, alternatively, you can specify the distribution name in your blueprint under `cloudify_agent` in the `distro` property.)
+You must change the names of the files to match the distribution you're using as the distribution is automatically identified upon installation (or, alternatively, you can specify the distro and release names in your blueprint under `cloudify_agent` in the `distro` property.)
 
 After creating the tool and obtaining the files, you can use the fabric task `upload_agent_to_manager` to upload your agent to the manager. You can read about running the task [here](https://github.com/cloudify-cosmo/cloudify-cli-fabric-tasks).
 
+Note: If you'd like to create deb files from your agents which include the files and are installable via a manager blueprint, you can use [packman](https://github.com/cloudify-cosmo/packman) to create the deb ([THAT'S WHAT WE CURRENTLY DO](https://github.com/cloudify-cosmo/cloudify-packager/tree/master/vagrant)! :))
+
+
 ### Installation
 
-NOTE: soon, you'll be able to instal this via pypi like this:
+NOTE: soon, you'll be able to install this via pypi like this:
 
 ```shell
 pip install cloudify-agent-packager
@@ -46,7 +49,7 @@ pip install https://github.com/cloudify-cosmo/cloudify-agent-packager/archive/ma
 
 IMPORTANT NOTES:
 
-- You must use this tool on the distribution you're intending for your agent to run in as it might require compilation.
+- You must use this tool on the specific version of the distribution you're intending for your agent to run in as it might require compilation.
 - You must have the desired version of python installed on your chosen image.
 - You must have the `tar` binary in your distribution.
 
@@ -101,7 +104,7 @@ management_modules:
 additional_modules:
     - pyzmq==14.3.1
     - https://github.com/cloudify-cosmo/cloudify-fabric-plugin/archive/1.1m4.tar.gz
-output_tar: /home/nir0s/Ubuntu-agent.tar.gz
+output_tar: /home/nir0s/Ubuntu-trusty-agent.tar.gz
 keep_venv: true
 ```
 

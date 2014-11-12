@@ -1,11 +1,12 @@
 distribution: Ubuntu
-venv: 'Ubuntu-agent/env'
+release: trusty
+venv: 'cloudify/test_venv/env'
 python_path: '/usr/bin/python'
 base_modules:
-    plugins_common: https://github.com/cloudify-cosmo/cloudify-plugins-common/archive/master.tar.gz
-    rest_client: https://github.com/cloudify-cosmo/cloudify-rest-client/archive/master.tar.gz
-    script_plugin: https://github.com/cloudify-cosmo/cloudify-script-plugin/archive/master.tar.gz
-    diamond_plugin: https://github.com/cloudify-cosmo/cloudify-diamond-plugin/archive/master.tar.gz
-management_modules_version: master
-output_tar: Ubuntu-agent.tar.gz
+    plugins_common: https://github.com/cloudify-cosmo/cloudify-plugins-common/archive/3.1rc1.tar.gz
+    rest_client: https://github.com/cloudify-cosmo/cloudify-rest-client/archive/3.1rc1.tar.gz
+    script_plugin: https://github.com/cloudify-cosmo/cloudify-script-plugin/archive/1.1rc1.tar.gz
+    diamond_plugin: https://github.com/cloudify-cosmo/cloudify-diamond-plugin/archive/1.1rc1.tar.gz
+management_modules_version: 3.1rc1
+output_tar: Ubuntu-trusty-agent.tar.gz
 keep_venv: false
