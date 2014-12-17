@@ -1,6 +1,6 @@
 # Cloudify Agent Packager
 
-[Master ![Build Status](https://travis-ci.org/cloudify-cosmo/cloudify-agent-packager.svg?branch=master)](https://travis-ci.org/cloudify-cosmo/cloudify-agent-packager)
+[![Build Status](https://travis-ci.org/cloudify-cosmo/cloudify-agent-packager.svg?branch=master)](https://travis-ci.org/cloudify-cosmo/cloudify-agent-packager)
 
 [![PyPI](http://img.shields.io/pypi/dm/cloudify-agent-packager.svg)](http://img.shields.io/pypi/dm/cloudify-agent-packager.svg)
 
