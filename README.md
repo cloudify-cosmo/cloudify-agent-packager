@@ -6,6 +6,7 @@
 
 [![PypI](http://img.shields.io/pypi/v/packman.svg)](http://img.shields.io/pypi/v/cloudify-agent-packager.svg)
 
-This tool creates Cloudify agent packages (For now, Linux Only!).
+
+This tool allows users to create personalized Cloudify agent packages (For now, Linux Only!).
 
 See [Cloudify's Agent Packager](http://getcloudify.org/guide/3.1/agents-packager.html) for more information.
