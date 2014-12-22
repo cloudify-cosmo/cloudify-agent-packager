@@ -2,6 +2,8 @@
 
 * Master Branch [![Build Status](https://travis-ci.org/cloudify-cosmo/cloudify-agent-packager.svg?branch=master)](https://travis-ci.org/cloudify-cosmo/cloudify-agent-packager)
 
+* Pypi Info
+
 [![PyPI](http://img.shields.io/pypi/dm/cloudify-agent-packager.svg)](http://img.shields.io/pypi/dm/cloudify-agent-packager.svg)
 
 [![PypI](http://img.shields.io/pypi/v/cloudify-agent-packager.svg)](http://img.shields.io/pypi/v/cloudify-agent-packager.svg)
