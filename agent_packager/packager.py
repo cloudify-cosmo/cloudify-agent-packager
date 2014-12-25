@@ -106,7 +106,12 @@ def _merge_modules(modules, config):
 
 
 def _validate(modules, venv):
-    pass
+    for base_module in modules['base'].keys():
+        utils.check_installed(base_module.replace('_', '-'), venv)
+    for additional_module in modules['additional']:
+        utils.check_installed(additional_module.replace('_', '-'), venv)
+    if 'agent' in modules:
+        utils.check_installed('cloudify-agent', venv)
 
 
 def create(config=None, config_file=None, force=False, dry=False,
@@ -208,30 +213,33 @@ def create(config=None, config_file=None, force=False, dry=False,
     # install external
     lgr.info('installing external modules...')
     for ext_module in EXTERNAL_MODULES:
+        lgr.info('installing {0}'.format(ext_module))
         utils.install_module(ext_module, venv)
 
     # install base
-    lgr.info('installing base modules...')
     base = modules['base']
     for module in MODULES_LIST:
         if base.get(module):
+            lgr.info('installing base module {0} from {1}'.format(
+                module.replace('_', '-'), base[module]))
             utils.install_module(base[module], venv)
         elif not base.get(module) and module in MANDATORY_MODULES:
             lgr.error('module {0} is mandatory! '
-                      'Cannot be "none"'.format(module))
+                      'Cannot be "none"'.format(module.replace('_', '-')))
             sys.exit(4)
         else:
-            lgr.info('module {0} is excluded. it will not be installed'.format(
-                module))
+            lgr.info('module {0} is excluded. '
+                     'it will not be a part of the agent'.format(
+                         module.replace('_', '-')))
 
     # install additional
-    lgr.info('installing additional plugins...')
     for module in modules['additional']:
+        lgr.info('installing additional module {0}'.format(module))
         utils.install_module(module, venv)
 
     # install cloudify-agent
-    lgr.info('installing Cloudify Agent module...')
     if modules.get('agent'):
+        lgr.info('installing cloudify-agent module...')
         utils.install_module(modules['agent'], venv)
 
     # uninstall excluded modules
@@ -239,6 +247,7 @@ def create(config=None, config_file=None, force=False, dry=False,
     for module in MODULES_LIST:
         module_name = module.replace('_', '-')
         if not base.get(module) and utils.check_installed(module_name, venv):
+            lgr.info('uninstalling {0}'.format(module_name))
             utils.uninstall_module(module_name, venv)
 
     lgr.info('validating installation...')
