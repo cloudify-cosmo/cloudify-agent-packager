@@ -106,12 +106,34 @@ def _merge_modules(modules, config):
 
 
 def _validate(modules, venv):
-    for base_module in modules['base'].keys():
-        utils.check_installed(base_module.replace('_', '-'), venv)
+    """validates that all requested modules are actually installed
+    within the virtualenv
+
+    :param dict modules: dict containing base, management and additional
+    modules.
+    :param string venv: path of virtualenv to install in.
+    """
+
+    failed = []
+
+    def check(module, venv, failed):
+        if not utils.check_installed(module.replace('_', '-'), venv):
+            lgr.error('failed to validate that {0} exists in {1}'.format(
+                module.replace('_', '-'), venv))
+            failed.append(module.replace('_', '-'))
+            return failed
+    for base_module, source in modules['base'].items():
+        if source:
+            check(base_module, venv, failed)
     for additional_module in modules['additional']:
-        utils.check_installed(additional_module.replace('_', '-'), venv)
+        check(additional_module, venv, failed)
     if 'agent' in modules:
-        utils.check_installed('cloudify-agent', venv)
+        check('cloudify-agent', venv, failed)
+
+    if failed:
+        lgr.error('validation failed. some of the requested modules were not '
+                  'installed.')
+        sys.exit(10)
 
 
 def create(config=None, config_file=None, force=False, dry=False,
@@ -173,7 +195,7 @@ def create(config=None, config_file=None, force=False, dry=False,
     # virtualenv
     if os.path.isdir(venv):
         if force:
-            lgr.info('removing previous venv...')
+            lgr.info('removing previous virtualenv...')
             shutil.rmtree(venv)
         else:
             lgr.error('virtualenv already exists at {0}. '
@@ -181,7 +203,7 @@ def create(config=None, config_file=None, force=False, dry=False,
                       'previous env.'.format(venv))
             sys.exit(2)
 
-    lgr.info('creating virtual environment: {0}'.format(venv))
+    lgr.info('creating virtualenv: {0}'.format(venv))
     utils.make_virtualenv(venv, python)
 
     # output file
@@ -193,7 +215,7 @@ def create(config=None, config_file=None, force=False, dry=False,
                 destination_tar))
             sys.exit(9)
 
-    # create modules dictionary
+    # create modules dictionary with defaults
     lgr.debug('retrieving modules to install...')
     modules = {}
     modules['base'] = BASE_MODULES
@@ -210,10 +232,10 @@ def create(config=None, config_file=None, force=False, dry=False,
     if dry:
         lgr.info('dryrun complete')
         sys.exit(0)
+
     # install external
-    lgr.info('installing external modules...')
     for ext_module in EXTERNAL_MODULES:
-        lgr.info('installing {0}'.format(ext_module))
+        lgr.info('installing external module {0}'.format(ext_module))
         utils.install_module(ext_module, venv)
 
     # install base
@@ -239,7 +261,8 @@ def create(config=None, config_file=None, force=False, dry=False,
 
     # install cloudify-agent
     if modules.get('agent'):
-        lgr.info('installing cloudify-agent module...')
+        lgr.info('installing cloudify-agent module from {0}'.format(
+            modules['agent']))
         utils.install_module(modules['agent'], venv)
 
     # uninstall excluded modules
@@ -258,10 +281,12 @@ def create(config=None, config_file=None, force=False, dry=False,
     utils.tar(venv, destination_tar)
 
     if not keep_venv:
-        lgr.info('removing origin venv')
+        lgr.info('removing origin virtualenv')
         shutil.rmtree(venv)
 
     lgr.info('process complete!')
+    lgr.info('the following modules were installed in the agent:\n{0}'.format(
+        utils.get_installed(venv)))
 
 
 class PackagerError(Exception):

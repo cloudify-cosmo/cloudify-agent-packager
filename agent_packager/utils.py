@@ -71,6 +71,11 @@ def uninstall_module(module, venv):
         sys.exit(3)
 
 
+def get_installed(venv):
+    p = run('{0}/bin/pip freeze'.format(venv), no_print=True)
+    return p.stdout
+
+
 def check_installed(module, venv):
     """checks to see if a module is installed
 
@@ -78,7 +83,7 @@ def check_installed(module, venv):
     :param string venv: path of virtualenv to install in.
     """
     p = run('{0}/bin/pip freeze'.format(venv), no_print=True)
-    if re.search(r'{0}'.format(module), p.stdout):
+    if re.search(r'{0}'.format(module), p.stdout.lower()):
         lgr.debug('module {0} is installed in {1}'.format(module, venv))
         return True
     lgr.debug('module {0} is not installed in {1}'.format(module, venv))
