@@ -52,7 +52,7 @@ lgr = logger.init()
 verbose_output = False
 
 
-def _set_global_verbosity_level(is_verbose_output=False):
+def set_global_verbosity_level(is_verbose_output=False):
     """sets the global verbosity level for console and the lgr logger.
 
     :param bool is_verbose_output: should be output be verbose
@@ -105,6 +105,10 @@ def _merge_modules(modules, config):
     return modules
 
 
+def _validate(modules, venv):
+    pass
+
+
 def create(config=None, config_file=None, force=False, dry=False,
            verbose=True):
     """Creates an agent package (tar.gz)
@@ -132,7 +136,7 @@ def create(config=None, config_file=None, force=False, dry=False,
     output file. If omitted, a default path will be given with the
     format `/DISTRIBUTION-agent.tar.gz`.
     """
-    _set_global_verbosity_level(verbose)
+    set_global_verbosity_level(verbose)
 
     if not config:
         config = _import_config(config_file) if config_file else \
@@ -194,7 +198,7 @@ def create(config=None, config_file=None, force=False, dry=False,
     modules = _merge_modules(modules, config)
 
     if dry:
-        _set_global_verbosity_level(True)
+        set_global_verbosity_level(True)
     lgr.debug('modules to install: {0}'.format(json.dumps(
         modules, sort_keys=True, indent=4, separators=(',', ': '))))
 
@@ -210,11 +214,15 @@ def create(config=None, config_file=None, force=False, dry=False,
     lgr.info('installing base modules...')
     base = modules['base']
     for module in MODULES_LIST:
-        if base.get(bool(module)):
+        if base.get(module):
             utils.install_module(base[module], venv)
-        elif not base.get(bool(module)) and module in MANDATORY_MODULES:
-            raise PackagerError('module {0} is mandatory! '
-                                'Cannot be "none"'.format(module))
+        elif not base.get(module) and module in MANDATORY_MODULES:
+            lgr.error('module {0} is mandatory! '
+                      'Cannot be "none"'.format(module))
+            sys.exit(4)
+        else:
+            lgr.info('module {0} is excluded. it will not be installed'.format(
+                module))
 
     # install additional
     lgr.info('installing additional plugins...')
@@ -222,23 +230,29 @@ def create(config=None, config_file=None, force=False, dry=False,
         utils.install_module(module, venv)
 
     # install cloudify-agent
-    lgr.info('installing Cloudify Agent...')
-    if modules.get(bool('agent')):
+    lgr.info('installing Cloudify Agent module...')
+    if modules.get('agent'):
         utils.install_module(modules['agent'], venv)
 
     # uninstall excluded modules
-    lgr.info('uninstalling excluded modules...')
+    lgr.info('uninstalling excluded modules (if any)...')
     for module in MODULES_LIST:
-        # TODO: check if module is installed
-        if not base.get(bool(module)):
-            utils.uninstall_module(module.relpace('_', '-'), venv)
+        module_name = module.replace('_', '-')
+        if not base.get(module) and utils.check_installed(module_name, venv):
+            utils.uninstall_module(module_name, venv)
+
+    lgr.info('validating installation...')
+    _validate(modules, venv)
 
     # create agent tar
     lgr.info('creating tar file: {0}'.format(destination_tar))
     utils.tar(venv, destination_tar)
+
     if not keep_venv:
         lgr.info('removing origin venv')
         shutil.rmtree(venv)
+
+    lgr.info('process complete!')
 
 
 class PackagerError(Exception):

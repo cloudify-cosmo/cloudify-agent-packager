@@ -5,11 +5,12 @@ import logger
 import sys
 import requests
 import tarfile
+import re
 
 lgr = logger.init()
 
 
-def run(cmd):
+def run(cmd, no_print=False):
     """executes a command
 
     :param string cmd: command to execute
@@ -17,8 +18,11 @@ def run(cmd):
     p = subprocess.Popen(
         cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     (stdout, stderr) = p.communicate()
-    lgr.debug('stdout: {0}'.format(stdout))
-    lgr.debug('stderr: {0}'.format(stderr))
+    if not no_print:
+        if len(stdout) > 0:
+            lgr.debug('stdout: {0}'.format(stdout))
+        if len(stderr) > 0:
+            lgr.debug('stderr: {0}'.format(stderr))
     p.stdout = stdout
     p.strerr = stderr
     return p
@@ -67,6 +71,20 @@ def uninstall_module(module, venv):
         sys.exit(3)
 
 
+def check_installed(module, venv):
+    """checks to see if a module is installed
+
+    :param string module: module to install. can be a url or a path.
+    :param string venv: path of virtualenv to install in.
+    """
+    p = run('{0}/bin/pip freeze'.format(venv), no_print=True)
+    if re.search(r'{0}'.format(module), p.stdout):
+        lgr.debug('module {0} is installed in {1}'.format(module, venv))
+        return True
+    lgr.debug('module {0} is not installed in {1}'.format(module, venv))
+    return False
+
+
 def download_file(url, destination):
     """downloads a file to a destination
     """
@@ -90,7 +108,7 @@ def tar(source, destination):
     # with closing(tarfile.open(destination, "w:gz")) as tar:
     #     tar.add(source, arcname=os.path.basename(source))
     # WORKAROUND IMPLEMENTATION
-    r = run('tar czvf {0} {1}'.format(destination, source))
+    r = run('tar czvf {0} {1}'.format(destination, source), no_print=True)
     if not r.returncode == 0:
         lgr.error('failed to create tar file.')
         sys.exit(10)

@@ -48,7 +48,7 @@ def agent_packager(test_options=None):
     """Main entry point for script."""
     version = ver_check()
     options = test_options or docopt(__doc__, version=version)
-    packager._set_global_verbosity_level(options.get('--verbose'))
+    packager.set_global_verbosity_level(options.get('--verbose'))
     lgr.debug(options)
     agent_packager_run(options)
 
