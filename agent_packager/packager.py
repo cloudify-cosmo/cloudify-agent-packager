@@ -18,22 +18,35 @@ EXTERNAL_MODULES = [
     'celery==3.0.24'
 ]
 
+MODULES_LIST = [
+    'cloudify_rest_client',
+    'cloudify_plugins_common',
+    'cloudify_script_plugin',
+    'cloudify_diamond_plugin',
+    # 'cloudify_agent_installer_plugin',
+    # 'cloudify_plugin_installer_plugin',
+    # 'cloudify_windows_agent_installer_plugin',
+    # 'cloudify_windows_plugin_installer_plugin',
+]
+
 BASE_MODULES = {
-    'plugins_common': 'https://github.com/cloudify-cosmo/cloudify-rest-client/archive/master.tar.gz',  # NOQA
-    'rest_client': 'https://github.com/cloudify-cosmo/cloudify-plugins-common/archive/master.tar.gz',  # NOQA
-    'script_plugin': 'https://github.com/cloudify-cosmo/cloudify-script-plugin/archive/master.tar.gz',  # NOQA
-    'diamond_plugin': 'https://github.com/cloudify-cosmo/cloudify-diamond-plugin/archive/master.tar.gz'  # NOQA
+    'cloudify_plugins_common': 'https://github.com/cloudify-cosmo/cloudify-rest-client/archive/master.tar.gz',  # NOQA
+    'cloudify_rest_client': 'https://github.com/cloudify-cosmo/cloudify-plugins-common/archive/master.tar.gz',  # NOQA
+    'cloudify_script_plugin': 'https://github.com/cloudify-cosmo/cloudify-script-plugin/archive/master.tar.gz',  # NOQA
+    'cloudify_diamond_plugin': 'https://github.com/cloudify-cosmo/cloudify-diamond-plugin/archive/master.tar.gz'  # NOQA
+    # 'cloudify_agent_installer_plugin': 'https://github.com/cloudify-cosmo/cloudify-agent-installer-plugin/archive/master.tar.gz'  # NOQA
+    # 'cloudify_plugin_installer_plugin': 'https://github.com/cloudify-cosmo/cloudify-plugin-installer-plugin/archive/master.tar.gz'  # NOQA
+    # 'cloudify_windows_agent_installer_plugin': 'https://github.com/cloudify-cosmo/cloudify-windows-agent-installer-plugin/archive/master.tar.gz'  # NOQA
+    # 'cloudify_windows_plugin_installer_plugin': 'https://github.com/cloudify-cosmo/cloudify-windows-plugin-installer-plugin/archive/master.tar.gz'  # NOQA
 }
 
-MANAGER_REPO_URL = 'https://github.com/cloudify-cosmo/cloudify-manager/archive/{0}.tar.gz'  # NOQA
+MANDATORY_MODULES = [
+    'cloudify_plugins_common',
+    'cloudify_rest_client'
+]
 
-MANAGEMENT_MODULES = {
-    'agent_installer': 'plugins/agent-installer',
-    'plugin_installer': 'plugins/plugin-installer',
-    'windows_agent_installer': 'plugins/windows-agent-installer',
-    'windows_plugin_installer': 'plugins/windows-plugin-installer',
-}
-
+DEFAULT_CLOUDIFY_AGENT_BRANCH = 'master'
+DEFAULT_CLOUDIFY_AGENT_URL = 'https://github.com/nir0s/cloudify-agent/archive/{0}.tar.gz'  # NOQA
 
 lgr = logger.init()
 verbose_output = False
@@ -82,34 +95,18 @@ def _merge_modules(modules, config):
     """
     additional_modules = config.get('additional_modules', [])
     modules['base'].update(config.get('base_modules', {}))
-    modules['management'].update(config.get('management_modules', {}))
+    if 'cloudify_agent_module' in config:
+        modules['agent'] = config['cloudify_agent_module']
+    elif 'cloudify_agent_version' in config:
+        modules['agent'] = DEFAULT_CLOUDIFY_AGENT_URL.format(
+            config['cloudify_agent_version'])
     for additional_module in additional_modules:
         modules['additional'].append(additional_module)
     return modules
 
 
-def _get_manager(source, venv):
-    """retrieves the manager repo
-
-    This is used by default to install the installer plugins.
-
-    :param string source: url of manager tar.gz file.
-    :param string venv: virtualenv path.
-    """
-    manager_tmp_dir = os.path.join(venv, 'manager')
-    os.makedirs(manager_tmp_dir)
-    tmp_tar = '{0}/tmp.tar.gz'.format(manager_tmp_dir)
-    lgr.debug('downloading manager code from: {0}'.format(source))
-    utils.download_file(source, tmp_tar)
-    # TODO: find a workaround for strip-components using tarfile
-    # TODO: check if tar before untaring
-    lgr.debug('extracting {0} to {1}'.format(tmp_tar, manager_tmp_dir))
-    utils.run('tar -xzvf {0} -C {1} --strip-components=1'.format(
-        tmp_tar, manager_tmp_dir))
-    return manager_tmp_dir
-
-
-def create(config=None, config_file=None, force=False, verbose=True):
+def create(config=None, config_file=None, force=False, dry=False,
+           verbose=True):
     """Creates an agent package (tar.gz)
 
     This will try to identify the distribution of the host you're running on.
@@ -124,7 +121,10 @@ def create(config=None, config_file=None, force=False, verbose=True):
     cloudify-plugins-common
     cloudify-script-plugin
     cloudify-diamond-plugin
-    agent and plugin installers from cloudify-manager
+    cloudify-agent-installer-plugin
+    cloudify-plugin-installer-plugin
+    cloudify-windows-agent-installer-plugin
+    cloudify-windows-plugin-installer-plugin
     any additional modules specified under `additional_modules` in the yaml.
 
     Once all modules are installed, a tar.gz file will be created. The
@@ -188,13 +188,19 @@ def create(config=None, config_file=None, force=False, verbose=True):
     lgr.debug('retrieving modules to install...')
     modules = {}
     modules['base'] = BASE_MODULES
-    modules['management'] = MANAGEMENT_MODULES
     modules['additional'] = []
+    modules['agent'] = DEFAULT_CLOUDIFY_AGENT_URL.format(
+        DEFAULT_CLOUDIFY_AGENT_BRANCH)
     modules = _merge_modules(modules, config)
 
+    if dry:
+        _set_global_verbosity_level(True)
     lgr.debug('modules to install: {0}'.format(json.dumps(
         modules, sort_keys=True, indent=4, separators=(',', ': '))))
 
+    if dry:
+        lgr.info('dryrun complete')
+        sys.exit(0)
     # install external
     lgr.info('installing external modules...')
     for ext_module in EXTERNAL_MODULES:
@@ -203,34 +209,29 @@ def create(config=None, config_file=None, force=False, verbose=True):
     # install base
     lgr.info('installing base modules...')
     base = modules['base']
-
-    if base.get('rest_client'):
-        utils.install_module(base['rest_client'], venv)
-    if base.get('plugins_common'):
-        utils.install_module(base['plugins_common'], venv)
-    if base.get('script_plugin'):
-        utils.install_module(base['script_plugin'], venv)
-    if base.get(bool('diamond_plugin')):
-        utils.install_module(base['diamond_plugin'], venv)
-
-    # install management
-    lgr.debug('retrieiving management modules code...')
-    version = config.get('management_modules_version', 'master')
-    manager_tmp_dir = _get_manager(MANAGER_REPO_URL.format(version), venv)
-
-    lgr.info('installing management modules...')
-    for mgmt_module in modules['management'].values():
-        if os.path.isdir(os.path.join(manager_tmp_dir, mgmt_module)):
-            utils.install_module(os.path.join(
-                manager_tmp_dir, mgmt_module), venv)
-        else:
-            if mgmt_module:
-                utils.install_module(mgmt_module, venv)
+    for module in MODULES_LIST:
+        if base.get(bool(module)):
+            utils.install_module(base[module], venv)
+        elif not base.get(bool(module)) and module in MANDATORY_MODULES:
+            raise PackagerError('module {0} is mandatory! '
+                                'Cannot be "none"'.format(module))
 
     # install additional
     lgr.info('installing additional plugins...')
     for module in modules['additional']:
         utils.install_module(module, venv)
+
+    # install cloudify-agent
+    lgr.info('installing Cloudify Agent...')
+    if modules.get(bool('agent')):
+        utils.install_module(modules['agent'], venv)
+
+    # uninstall excluded modules
+    lgr.info('uninstalling excluded modules...')
+    for module in MODULES_LIST:
+        # TODO: check if module is installed
+        if not base.get(bool(module)):
+            utils.uninstall_module(module.relpace('_', '-'), venv)
 
     # create agent tar
     lgr.info('creating tar file: {0}'.format(destination_tar))

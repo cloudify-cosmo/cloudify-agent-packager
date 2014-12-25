@@ -53,6 +53,20 @@ def install_module(module, venv):
         sys.exit(2)
 
 
+def uninstall_module(module, venv):
+    """uninstalls a module from a virtualenv
+
+    :param string module: module to install. can be a url or a path.
+    :param string venv: path of virtualenv to install in.
+    """
+    lgr.debug('uninstalling {0} in venv {1}'.format(module, venv))
+    pip_cmd = '{1}/bin/pip uninstall {0} -y'.format(module, venv)
+    p = run(pip_cmd)
+    if not p.returncode == 0:
+        lgr.error('could not uninstall module: {0}'.format(module))
+        sys.exit(3)
+
+
 def download_file(url, destination):
     """downloads a file to a destination
     """
