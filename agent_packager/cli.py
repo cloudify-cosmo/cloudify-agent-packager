@@ -41,7 +41,7 @@ def agent_packager_run(o):
         config_file=o.get('--config'),
         force=o.get('--force'),
         dry=o.get('--dryrun'),
-        validate=o.get('--no-validation')
+        validate=o.get('--no-validation'),
         verbose=o.get('--verbose')
         )
 
