@@ -11,6 +11,7 @@ Options:
     -c --config=<path>          Path to config yaml (defaults to config.yaml)
     -f --force                  Forces deletion and creation of venv and tar file.
     -d --dryrun                 Prints out the modules to be installed without actually installing them.
+    -n --no-validation          Does not validate that all modules were installed correctly.
     -v --verbose                verbose level logging
     --version                   Display current version
 """
@@ -40,6 +41,7 @@ def agent_packager_run(o):
         config_file=o.get('--config'),
         force=o.get('--force'),
         dry=o.get('--dryrun'),
+        validate=o.get('--no-validation')
         verbose=o.get('--verbose')
         )
 

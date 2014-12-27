@@ -137,7 +137,7 @@ def _validate(modules, venv):
 
 
 def create(config=None, config_file=None, force=False, dry=False,
-           verbose=True):
+           no_validate=False, verbose=True):
     """Creates an agent package (tar.gz)
 
     This will try to identify the distribution of the host you're running on.
@@ -273,8 +273,9 @@ def create(config=None, config_file=None, force=False, dry=False,
             lgr.info('uninstalling {0}'.format(module_name))
             utils.uninstall_module(module_name, venv)
 
-    lgr.info('validating installation...')
-    _validate(modules, venv)
+    if not no_validate:
+        lgr.info('validating installation...')
+        _validate(modules, venv)
 
     # create agent tar
     lgr.info('creating tar file: {0}'.format(destination_tar))
