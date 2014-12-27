@@ -33,11 +33,11 @@ BASE_MODULES = {
     'cloudify_plugins_common': 'https://github.com/cloudify-cosmo/cloudify-rest-client/archive/master.tar.gz',  # NOQA
     'cloudify_rest_client': 'https://github.com/cloudify-cosmo/cloudify-plugins-common/archive/master.tar.gz',  # NOQA
     'cloudify_script_plugin': 'https://github.com/cloudify-cosmo/cloudify-script-plugin/archive/master.tar.gz',  # NOQA
-    'cloudify_diamond_plugin': 'https://github.com/cloudify-cosmo/cloudify-diamond-plugin/archive/master.tar.gz'  # NOQA
-    'cloudify_agent_installer_plugin': 'https://github.com/cloudify-cosmo/cloudify-agent-installer-plugin/archive/master.tar.gz'  # NOQA
-    'cloudify_plugin_installer_plugin': 'https://github.com/cloudify-cosmo/cloudify-plugin-installer-plugin/archive/master.tar.gz'  # NOQA
-    'cloudify_windows_agent_installer_plugin': 'https://github.com/cloudify-cosmo/cloudify-windows-agent-installer-plugin/archive/master.tar.gz'  # NOQA
-    'cloudify_windows_plugin_installer_plugin': 'https://github.com/cloudify-cosmo/cloudify-windows-plugin-installer-plugin/archive/master.tar.gz'  # NOQA
+    'cloudify_diamond_plugin': 'https://github.com/cloudify-cosmo/cloudify-diamond-plugin/archive/master.tar.gz',  # NOQA
+    'cloudify_agent_installer_plugin': 'https://github.com/cloudify-cosmo/cloudify-agent-installer-plugin/archive/master.tar.gz',  # NOQA
+    'cloudify_plugin_installer_plugin': 'https://github.com/cloudify-cosmo/cloudify-plugin-installer-plugin/archive/master.tar.gz',  # NOQA
+    'cloudify_windows_agent_installer_plugin': 'https://github.com/cloudify-cosmo/cloudify-windows-agent-installer-plugin/archive/master.tar.gz',  # NOQA
+    'cloudify_windows_plugin_installer_plugin': 'https://github.com/cloudify-cosmo/cloudify-windows-plugin-installer-plugin/archive/master.tar.gz',  # NOQA
 }
 
 MANDATORY_MODULES = [
