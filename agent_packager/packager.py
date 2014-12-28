@@ -23,29 +23,17 @@ MODULES_LIST = [
     'cloudify_plugins_common',
     'cloudify_script_plugin',
     'cloudify_diamond_plugin',
-    'cloudify_agent_installer_plugin',
-    'cloudify_plugin_installer_plugin',
-    'cloudify_windows_agent_installer_plugin',
-    'cloudify_windows_plugin_installer_plugin',
+    # 'cloudify_agent_installer_plugin',
+    # 'cloudify_plugin_installer_plugin',
+    # 'cloudify_windows_agent_installer_plugin',
+    # 'cloudify_windows_plugin_installer_plugin',
 ]
-
-CORE_MODULES = {
-    'cloudify_plugins_common': 'https://github.com/cloudify-cosmo/cloudify-rest-client/archive/master.tar.gz',  # NOQA
-    'cloudify_rest_client': 'https://github.com/cloudify-cosmo/cloudify-plugins-common/archive/master.tar.gz',  # NOQA
-    'cloudify_script_plugin': 'https://github.com/cloudify-cosmo/cloudify-script-plugin/archive/master.tar.gz',  # NOQA
-    'cloudify_diamond_plugin': 'https://github.com/cloudify-cosmo/cloudify-diamond-plugin/archive/master.tar.gz',  # NOQA
-    'cloudify_agent_installer_plugin': 'https://github.com/cloudify-cosmo/cloudify-agent-installer-plugin/archive/master.tar.gz',  # NOQA
-    'cloudify_plugin_installer_plugin': 'https://github.com/cloudify-cosmo/cloudify-plugin-installer-plugin/archive/master.tar.gz',  # NOQA
-    'cloudify_windows_agent_installer_plugin': 'https://github.com/cloudify-cosmo/cloudify-windows-agent-installer-plugin/archive/master.tar.gz',  # NOQA
-    'cloudify_windows_plugin_installer_plugin': 'https://github.com/cloudify-cosmo/cloudify-windows-plugin-installer-plugin/archive/master.tar.gz',  # NOQA
-}
 
 MANDATORY_MODULES = [
     'cloudify_plugins_common',
     'cloudify_rest_client'
 ]
 
-DEFAULT_CLOUDIFY_AGENT_BRANCH = 'master'
 DEFAULT_CLOUDIFY_AGENT_URL = 'https://github.com/nir0s/cloudify-agent/archive/{0}.tar.gz'  # NOQA
 
 lgr = logger.init()
@@ -100,6 +88,10 @@ def _merge_modules(modules, config):
     elif 'cloudify_agent_version' in config:
         modules['agent'] = DEFAULT_CLOUDIFY_AGENT_URL.format(
             config['cloudify_agent_version'])
+    else:
+        lgr.error('either `cloudify_agent_module` or `cloudify_agent_version` '
+                  'must be specified in the yaml configuration file.')
+        sys.exit(3)
     for additional_module in additional_modules:
         modules['additional'].append(additional_module)
     return modules
@@ -125,7 +117,7 @@ def _validate(modules, venv):
             return failed
 
     for core_module, source in modules['core'].items():
-        if source:
+        if source and not source == 'exclude':
             check(core_module, venv, failed)
     for additional_module in modules['additional']:
         check(additional_module, venv, failed)
@@ -225,10 +217,9 @@ def create(config=None, config_file=None, force=False, dry=False,
     # create modules dictionary with defaults
     lgr.debug('retrieving modules to install...')
     modules = {}
-    modules['core'] = CORE_MODULES
+    modules['core'] = {}
     modules['additional'] = []
-    modules['agent'] = DEFAULT_CLOUDIFY_AGENT_URL.format(
-        DEFAULT_CLOUDIFY_AGENT_BRANCH)
+    modules['agent'] = ""
     modules = _merge_modules(modules, config)
 
     if dry:
@@ -249,18 +240,17 @@ def create(config=None, config_file=None, force=False, dry=False,
     core = modules['core']
     for module in MODULES_LIST:
         module_name = get_module_name(module)
-        if core.get(module):
-            lgr.info('installing core module {0} from {1}'.format(
+        if core.get(module) and core[module] == 'exclude':
+            lgr.info('module {0} is excluded. '
+                     'it will not be a part of the agent.'.format(
+                         module_name))
+        elif core.get(module):
+            lgr.info('installing core module {0} from {1}.'.format(
                 module_name, core[module]))
             utils.install_module(core[module], venv)
-        elif not core.get(module) and module in MANDATORY_MODULES:
-            lgr.error('module {0} is mandatory! '
-                      'Cannot be "False"'.format(module_name))
-            sys.exit(4)
-        else:
-            lgr.info('module {0} is excluded. '
-                     'it will not be a part of the agent'.format(
-                         module_name))
+        elif not core.get(module):
+            lgr.info('module {0} will be installed as a part of '
+                     'cloudify-agent (if applicable).'.format(module_name))
 
     # install additional
     for module in modules['additional']:
@@ -277,7 +267,8 @@ def create(config=None, config_file=None, force=False, dry=False,
     lgr.info('uninstalling excluded modules (if any)...')
     for module in MODULES_LIST:
         module_name = get_module_name(module)
-        if not core.get(module) and utils.check_installed(module_name, venv):
+        if core.get(module) == 'exclude' and \
+                utils.check_installed(module_name, venv):
             lgr.info('uninstalling {0}'.format(module_name))
             utils.uninstall_module(module_name, venv)
 
