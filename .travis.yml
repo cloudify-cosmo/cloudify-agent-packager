@@ -1,11 +1,24 @@
 language: python
 python:
-  - "2.7"
+- '2.7'
 env:
-    - TOX_ENV=flake8
-    - TOX_ENV=py26
-    - TOX_ENV=py27
+- TOX_ENV=flake8
+- TOX_ENV=py26
+- TOX_ENV=py27
 install:
-    - pip install tox
+- pip install tox
 script:
-    - tox -e $TOX_ENV
+- tox -e $TOX_ENV
+deploy:
+  provider: pypi
+  server: https://pypi.python.org/pypi
+  on:
+    branch: pypi-release
+    condition: $TOX_ENV = py27
+  user:
+    secure: bTUXPGoO8wAe6Erd99GuTSGnL2RWrwxGeOTKHpdCgzwtRsgi26nyOUbq82/PuHmY4xDHc8dJvQtUlvW2LhsWsiJRckjUFoX8t6Z11JvIt3lv4AcTLYn2zNU1V5RU63i6KCxdGqgGygTkWEQDSfOpx5G/uMjFHVKacBaLR3SMgGs=
+  password:
+    secure: yp5kbSIUqDLCWT8v/iXLQbYcxtJWyZ0NooDdkZdrDEtKNKAGxhrV5kkMQm+4Car31TSF0xNVgQNl9u7tpCiXH8QD8IXBpR5G/LiX0KORJ86mqU+8YcE3Pl22qa0WCohuQx9at+eTM52y5QDk4M/O6k/YbCpFHHZXW6t4WFh5aa0=
+after_deploy:
+- git clone https://github.com/cloudify-cosmo/travis-utils.git
+- python travis-utils/validate_pypi.py -v || exit 1
