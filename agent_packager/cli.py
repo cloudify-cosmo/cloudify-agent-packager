@@ -3,7 +3,7 @@
 """Script to run Cloudify's Agent Packager via command line
 
 Usage:
-    cfy-ap [--config=<path> --force --dryrun -v]
+    cfy-ap [--config=<path> --force --dryrun --no-validation -v]
     cfy-ap --version
 
 Options:

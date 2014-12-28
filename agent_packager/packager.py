@@ -29,7 +29,7 @@ MODULES_LIST = [
     'cloudify_windows_plugin_installer_plugin',
 ]
 
-BASE_MODULES = {
+CORE_MODULES = {
     'cloudify_plugins_common': 'https://github.com/cloudify-cosmo/cloudify-rest-client/archive/master.tar.gz',  # NOQA
     'cloudify_rest_client': 'https://github.com/cloudify-cosmo/cloudify-plugins-common/archive/master.tar.gz',  # NOQA
     'cloudify_script_plugin': 'https://github.com/cloudify-cosmo/cloudify-script-plugin/archive/master.tar.gz',  # NOQA
@@ -89,12 +89,12 @@ def _import_config(config_file=DEFAULT_CONFIG_FILE):
 def _merge_modules(modules, config):
     """merges the default modules with the modules from the config yaml
 
-    :param dict modules: dict containing base, management and additional
-    modules.
+    :param dict modules: dict containing core and additional
+    modules and the cloudify-agent module.
     :param dict config: dict containing the config.
     """
     additional_modules = config.get('additional_modules', [])
-    modules['base'].update(config.get('base_modules', {}))
+    modules['core'].update(config.get('core_modules', {}))
     if 'cloudify_agent_module' in config:
         modules['agent'] = config['cloudify_agent_module']
     elif 'cloudify_agent_version' in config:
@@ -109,22 +109,24 @@ def _validate(modules, venv):
     """validates that all requested modules are actually installed
     within the virtualenv
 
-    :param dict modules: dict containing base, management and additional
-    modules.
+    :param dict modules: dict containing core and additional
+    modules and the cloudify-agent module.
     :param string venv: path of virtualenv to install in.
     """
 
     failed = []
 
     def check(module, venv, failed):
-        if not utils.check_installed(module.replace('_', '-'), venv):
+        module_name = get_module_name(module)
+        if not utils.check_installed(module_name, venv):
             lgr.error('failed to validate that {0} exists in {1}'.format(
-                module.replace('_', '-'), venv))
-            failed.append(module.replace('_', '-'))
+                module_name, venv))
+            failed.append(module_name)
             return failed
-    for base_module, source in modules['base'].items():
+
+    for core_module, source in modules['core'].items():
         if source:
-            check(base_module, venv, failed)
+            check(core_module, venv, failed)
     for additional_module in modules['additional']:
         check(additional_module, venv, failed)
     if 'agent' in modules:
@@ -134,6 +136,10 @@ def _validate(modules, venv):
         lgr.error('validation failed. some of the requested modules were not '
                   'installed.')
         sys.exit(10)
+
+
+def get_module_name(module):
+    return module.replace('_', '-')
 
 
 def create(config=None, config_file=None, force=False, dry=False,
@@ -156,6 +162,7 @@ def create(config=None, config_file=None, force=False, dry=False,
     cloudify-plugin-installer-plugin
     cloudify-windows-agent-installer-plugin
     cloudify-windows-plugin-installer-plugin
+    cloudify-agent
     any additional modules specified under `additional_modules` in the yaml.
 
     Once all modules are installed, a tar.gz file will be created. The
@@ -218,7 +225,7 @@ def create(config=None, config_file=None, force=False, dry=False,
     # create modules dictionary with defaults
     lgr.debug('retrieving modules to install...')
     modules = {}
-    modules['base'] = BASE_MODULES
+    modules['core'] = CORE_MODULES
     modules['additional'] = []
     modules['agent'] = DEFAULT_CLOUDIFY_AGENT_URL.format(
         DEFAULT_CLOUDIFY_AGENT_BRANCH)
@@ -238,21 +245,22 @@ def create(config=None, config_file=None, force=False, dry=False,
         lgr.info('installing external module {0}'.format(ext_module))
         utils.install_module(ext_module, venv)
 
-    # install base
-    base = modules['base']
+    # install core modules
+    core = modules['core']
     for module in MODULES_LIST:
-        if base.get(module):
-            lgr.info('installing base module {0} from {1}'.format(
-                module.replace('_', '-'), base[module]))
-            utils.install_module(base[module], venv)
-        elif not base.get(module) and module in MANDATORY_MODULES:
+        module_name = get_module_name(module)
+        if core.get(module):
+            lgr.info('installing core module {0} from {1}'.format(
+                module_name, core[module]))
+            utils.install_module(core[module], venv)
+        elif not core.get(module) and module in MANDATORY_MODULES:
             lgr.error('module {0} is mandatory! '
-                      'Cannot be "none"'.format(module.replace('_', '-')))
+                      'Cannot be "False"'.format(module_name))
             sys.exit(4)
         else:
             lgr.info('module {0} is excluded. '
                      'it will not be a part of the agent'.format(
-                         module.replace('_', '-')))
+                         module_name))
 
     # install additional
     for module in modules['additional']:
@@ -268,8 +276,8 @@ def create(config=None, config_file=None, force=False, dry=False,
     # uninstall excluded modules
     lgr.info('uninstalling excluded modules (if any)...')
     for module in MODULES_LIST:
-        module_name = module.replace('_', '-')
-        if not base.get(module) and utils.check_installed(module_name, venv):
+        module_name = get_module_name(module)
+        if not core.get(module) and utils.check_installed(module_name, venv):
             lgr.info('uninstalling {0}'.format(module_name))
             utils.uninstall_module(module_name, venv)
 
