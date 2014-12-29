@@ -19,7 +19,7 @@ deploy:
   password:
     secure: "Zh4zE8RqY53WBWqIaEol0mtjlPXGzp1IGTqeoNKbxW3yUECRRPiqmtzz+8RYbpPJ8QQcSKu7vWGI7Wdfjnj/49umxaBFBJ+l2y5waijjeA4aZLzrWSla5Xvt9f2b9FfzAQo3ymKMeiEugj6RoM8KWBJ53hEB0WHhLCvTAQeRwFU="
 - provider: pypi
-  server: https://pypitest.python.org/pypi
+  server: https://testpypi.python.org/pypi
   on:
     branch: pypi-test
     condition: $TOX_ENV = py27
