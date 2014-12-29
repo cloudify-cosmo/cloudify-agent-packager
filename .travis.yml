@@ -28,4 +28,4 @@ deploy:
     secure: "UEUr+aJ7PxDrL4peWkrCtzFX/RISq25gYeZOh5jGUffUDeOVbboS3Fasw14cvictjVdn91dj+qmSSR+kMido+GVHfx3F4FXWilgCh2Te0+fVqBXPbkikEpGsx+vAzCUqgKE/BV6nyxP2ZQAvFIROVwX+00l5J4ztddJhTIx5Efk="
 after_deploy:
 - git clone https://github.com/cloudify-cosmo/travis-utils.git
-- python travis-utils/validate_pypi.py -v || exit 1
+- python travis-utils/validate_pypi.py -v -b $TRAVIS_BRANCH || exit 1
