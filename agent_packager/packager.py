@@ -116,11 +116,16 @@ def _validate(modules, venv):
             failed.append(module_name)
             return failed
 
+    # validate core modules
     for core_module, source in modules['core'].items():
         if source and not source == 'exclude':
             check(core_module, venv, failed)
+
+    # validate additional modules
     for additional_module in modules['additional']:
         check(additional_module, venv, failed)
+
+    # validate cloudify-agent modules
     if 'agent' in modules:
         check('cloudify-agent', venv, failed)
 
@@ -241,13 +246,22 @@ def create(config=None, config_file=None, force=False, dry=False,
     for module in MODULES_LIST:
         module_name = get_module_name(module)
         if core.get(module) and core[module] == 'exclude':
-            lgr.info('module {0} is excluded. '
-                     'it will not be a part of the agent.'.format(
-                         module_name))
+            if module in MANDATORY_MODULES:
+                lgr.error('module {0} is excluded but mandatory'.format(
+                    module_name))
+                sys.exit(5)
+            else:
+                lgr.info('module {0} is excluded. '
+                         'it will not be a part of the agent.'.format(
+                             module_name))
         elif core.get(module):
             lgr.info('installing core module {0} from {1}.'.format(
                 module_name, core[module]))
             utils.install_module(core[module], venv)
+        elif not core.get(module) and module in MANDATORY_MODULES:
+            lgr.info('module {0} will be installed as a part of '
+                     'cloudify-agent (This is a mandatory module).'.format(
+                         module_name))
         elif not core.get(module):
             lgr.info('module {0} will be installed as a part of '
                      'cloudify-agent (if applicable).'.format(module_name))
