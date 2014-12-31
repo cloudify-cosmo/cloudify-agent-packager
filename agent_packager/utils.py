@@ -36,7 +36,7 @@ def make_virtualenv(virtualenv_dir, python='/usr/bin/python'):
     lgr.debug('virtualenv_dir: {0}'.format(virtualenv_dir))
     p = run('virtualenv -p {0} {1}'.format(python, virtualenv_dir))
     if not p.returncode == 0:
-        lgr.error('could not create venv: {0}'.format(virtualenv_dir))
+        lgr.error('Could not create venv: {0}'.format(virtualenv_dir))
         sys.exit(1)
 
 
@@ -46,14 +46,14 @@ def install_module(module, venv):
     :param string module: module to install. can be a url or a path.
     :param string venv: path of virtualenv to install in.
     """
-    lgr.debug('installing {0} in venv {1}'.format(module, venv))
+    lgr.debug('Installing {0} in venv {1}'.format(module, venv))
     if module == 'pre':
         pip_cmd = '{1}/bin/pip install {0} --pre'.format(module, venv)
     else:
         pip_cmd = '{1}/bin/pip install {0}'.format(module, venv)
     p = run(pip_cmd)
     if not p.returncode == 0:
-        lgr.error('could not install module: {0}'.format(module))
+        lgr.error('Could not install module: {0}'.format(module))
         sys.exit(2)
 
 
@@ -63,11 +63,11 @@ def uninstall_module(module, venv):
     :param string module: module to install. can be a url or a path.
     :param string venv: path of virtualenv to install in.
     """
-    lgr.debug('uninstalling {0} in venv {1}'.format(module, venv))
+    lgr.debug('Uninstalling {0} in venv {1}'.format(module, venv))
     pip_cmd = '{1}/bin/pip uninstall {0} -y'.format(module, venv)
     p = run(pip_cmd)
     if not p.returncode == 0:
-        lgr.error('could not uninstall module: {0}'.format(module))
+        lgr.error('Could not uninstall module: {0}'.format(module))
         sys.exit(3)
 
 
@@ -84,20 +84,20 @@ def check_installed(module, venv):
     """
     p = run('{0}/bin/pip freeze'.format(venv), no_print=True)
     if re.search(r'{0}'.format(module), p.stdout.lower()):
-        lgr.debug('module {0} is installed in {1}'.format(module, venv))
+        lgr.debug('Module {0} is installed in {1}'.format(module, venv))
         return True
-    lgr.debug('module {0} is not installed in {1}'.format(module, venv))
+    lgr.debug('Module {0} is not installed in {1}'.format(module, venv))
     return False
 
 
 def download_file(url, destination):
     """downloads a file to a destination
     """
-    lgr.debug('downloading {0} to {1}...'.format(url, destination))
+    lgr.debug('Downloading {0} to {1}...'.format(url, destination))
     destination = destination if destination else url.split('/')[-1]
     r = requests.get(url, stream=True)
     if not r.status_code == 200:
-        lgr.error('could not download file: {0}'.format(url))
+        lgr.error('Could not download file: {0}'.format(url))
         sys.exit(3)
     with open(destination, 'wb') as f:
         for chunk in r.iter_content(chunk_size=1024):
@@ -115,7 +115,7 @@ def tar(source, destination):
     # WORKAROUND IMPLEMENTATION
     r = run('tar czvf {0} {1}'.format(destination, source), no_print=True)
     if not r.returncode == 0:
-        lgr.error('failed to create tar file.')
+        lgr.error('Failed to create tar file.')
         sys.exit(10)
 
 
