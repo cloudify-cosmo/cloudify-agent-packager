@@ -21,6 +21,9 @@ EXTERNAL_MODULES = [
 MODULES_LIST = [
     'cloudify_rest_client',
     'cloudify_plugins_common',
+]
+
+PLUGINS_LIST = [
     'cloudify_script_plugin',
     'cloudify_diamond_plugin',
     # 'cloudify_agent_installer_plugin',
@@ -30,8 +33,12 @@ MODULES_LIST = [
 ]
 
 MANDATORY_MODULES = [
+    'cloudify_rest_client',
     'cloudify_plugins_common',
-    'cloudify_rest_client'
+    # 'cloudify_agent_installer_plugin',
+    # 'cloudify_plugin_installer_plugin',
+    # 'cloudify_windows_agent_installer_plugin',
+    # 'cloudify_windows_plugin_installer_plugin',
 ]
 
 DEFAULT_CLOUDIFY_AGENT_URL = 'https://github.com/nir0s/cloudify-agent/archive/{0}.tar.gz'  # NOQA
@@ -75,8 +82,10 @@ def _import_config(config_file=DEFAULT_CONFIG_FILE):
 
 
 def _set_defaults(modules):
-    modules['core'] = {}
-    modules['additional'] = []
+    modules['core_modules'] = {}
+    modules['core_plugins'] = {}
+    modules['additional_modules'] = []
+    modules['additional_plugins'] = []
     modules['agent'] = ""
     return modules
 
@@ -88,8 +97,16 @@ def _merge_modules(modules, config):
     modules and the cloudify-agent module.
     :param dict config: dict containing the config.
     """
+    modules['core_modules'].update(config.get('core_modules', {}))
+    modules['core_plugins'].update(config.get('core_plugins', {}))
+
     additional_modules = config.get('additional_modules', [])
-    modules['core'].update(config.get('core_modules', {}))
+    additional_plugins = config.get('additional_plugins', [])
+    for additional_module in additional_modules:
+        modules['additional_modules'].append(additional_module)
+    for additional_plugin in additional_plugins:
+        modules['additional_plugins'].append(additional_plugin)
+
     if 'cloudify_agent_module' in config:
         modules['agent'] = config['cloudify_agent_module']
     elif 'cloudify_agent_version' in config:
@@ -99,40 +116,7 @@ def _merge_modules(modules, config):
         lgr.error('Either `cloudify_agent_module` or `cloudify_agent_version` '
                   'must be specified in the yaml configuration file.')
         sys.exit(3)
-    for additional_module in additional_modules:
-        modules['additional'].append(additional_module)
     return modules
-
-
-class Validate():
-
-    def __init__(self, modules, venv):
-        self.venv = venv
-        self.failed = []
-        self.modules = modules
-
-    def _check(self, module):
-        module_name = get_module_name(module)
-        if not utils.check_installed(module_name, self.venv):
-            lgr.error('It appears that {0} does not exist in {1}'.format(
-                module_name, self.venv))
-            self.failed.append(module_name)
-
-    def external(self):
-        for module in EXTERNAL_MODULES:
-            self._check(module)
-
-    def core(self):
-        for module, source in self.modules['core'].items():
-            if source and not source == 'exclude':
-                self._check(module)
-
-    def additional(self):
-        for module in self.modules['additional']:
-            self._check(module)
-
-    def agent(self):
-        self._check('cloudify-agent')
 
 
 def _validate(modules, venv):
@@ -143,32 +127,38 @@ def _validate(modules, venv):
     modules and the cloudify-agent module.
     :param string venv: path of virtualenv to install in.
     """
-    lgr.info('Validating installation...')
-    validate = Validate(modules, venv)
-    validate.external()
-    validate.core()
-    validate.additional()
-    validate.agent()
 
-    if validate.failed:
+    failed = []
+
+    lgr.info('Validating installation...')
+    for module in modules:
+        module_name = get_module_name(module)
+        lgr.info('Validating that {0} is installed.'.format(module_name))
+        if not utils.check_installed(module_name, venv):
+            lgr.error('It appears that {0} does not exist in {1}'.format(
+                module_name, venv))
+            failed.append(module_name)
+
+    if failed:
         lgr.error('Validation failed. some of the requested modules were not '
                   'installed.')
         sys.exit(10)
 
 
-class Install():
+class ModuleInstaller():
 
-    def __init__(self, modules, venv):
+    def __init__(self, modules, venv, final_set):
         self.venv = venv
         self.modules = modules
+        self.final_set = final_set
 
-    def external(self):
-        for module in EXTERNAL_MODULES:
-            lgr.info('Installing external module {0}'.format(module))
+    def install_modules(self, modules):
+        for module in modules:
+            lgr.info('Installing module {0}'.format(module))
             utils.install_module(module, self.venv)
 
-    def core(self):
-        core = self.modules['core']
+    def install_core_modules(self):
+        core = self.modules['core_modules']
         # we must run through the MODULES_LIST so that dependencies are
         # installed in order
         for module in MODULES_LIST:
@@ -183,9 +173,10 @@ class Install():
                              'it will not be a part of the agent.'.format(
                                  module_name))
             elif core.get(module):
-                lgr.info('Installing core module {0} from {1}.'.format(
+                lgr.info('Installing module {0} from {1}.'.format(
                     module_name, core[module]))
                 utils.install_module(core[module], self.venv)
+                self.final_set.append(module_name)
             elif not core.get(module) and module in MANDATORY_MODULES:
                 lgr.info('Module {0} will be installed as a part of '
                          'cloudify-agent (This is a mandatory module).'.format(
@@ -194,33 +185,59 @@ class Install():
                 lgr.info('Module {0} will be installed as a part of '
                          'cloudify-agent (if applicable).'.format(module_name))
 
-    def additional(self):
-        for module in self.modules['additional']:
-            lgr.info('Installing additional module {0}'.format(module))
-            utils.install_module(module, self.venv)
+    def install_core_plugins(self):
+        core = self.modules['core_plugins']
 
-    def agent(self):
+        for module in PLUGINS_LIST:
+            module_name = get_module_name(module)
+            if core.get(module) and core[module] == 'exclude':
+                lgr.info('Module {0} is excluded. '
+                         'it will not be a part of the agent.'.format(
+                             module_name))
+            elif core.get(module):
+                lgr.info('Installing module {0} from {1}.'.format(
+                    module_name, core[module]))
+                utils.install_module(core[module], self.venv)
+                self.final_set.append(module_name)
+            elif not core.get(module):
+                lgr.info('Module {0} will be installed as a part of '
+                         'cloudify-agent (if applicable).'.format(module_name))
+
+    def install_agent(self):
         lgr.info('Installing cloudify-agent module from {0}'.format(
             self.modules['agent']))
         utils.install_module(self.modules['agent'], self.venv)
+        self.final_set.append('cloudify-agent')
 
 
-def _install(modules, venv):
+def _install(modules, venv, final_set):
     """installs all requested modules
 
     :param dict modules: dict containing core and additional
     modules and the cloudify-agent module.
     :param string venv: path of virtualenv to install in.
     """
-    install = Install(modules, venv)
-    install.external()
-    install.core()
-    install.additional()
-    install.agent()
+    installer = ModuleInstaller(modules, venv, final_set)
+    lgr.info('Installing external modules...')
+    installer.install_modules(EXTERNAL_MODULES)
+    lgr.info('Installing core modules...')
+    installer.install_core_modules()
+    lgr.info('Installing core plugins...')
+    installer.install_core_plugins()
+    lgr.info('Installing additional modules...')
+    installer.install_modules(modules['additional_modules'])
+    lgr.info('Installing additional plugins...')
+    installer.install_modules(modules['additional_plugins'])
+    installer.install_agent()
+    return installer.final_set
 
 
 def get_module_name(module):
     return module.replace('_', '-')
+
+
+def generate_includes_file(plugins_list):
+    pass
 
 
 def create(config=None, config_file=None, force=False, dry=False,
@@ -252,6 +269,7 @@ def create(config=None, config_file=None, force=False, dry=False,
     format `/DISTRIBUTION-agent.tar.gz`.
     """
     set_global_verbosity_level(verbose)
+    final_set = []
 
     if not config:
         config = _import_config(config_file) if config_file else \
@@ -319,20 +337,21 @@ def create(config=None, config_file=None, force=False, dry=False,
         sys.exit(0)
 
     # install all requested modules
-    _install(modules, venv)
+    final_set = _install(modules, venv, final_set)
 
     # uninstall excluded modules
-    lgr.info('Uninstalling excluded modules (if any)...')
-    for module in MODULES_LIST:
+    lgr.info('Uninstalling excluded plugins (if any)...')
+    for module in PLUGINS_LIST:
         module_name = get_module_name(module)
-        if modules['core'].get(module) == 'exclude' and \
+        if modules['core_plugins'].get(module) == 'exclude' and \
                 utils.check_installed(module_name, venv):
             lgr.info('uninstalling {0}'.format(module_name))
             utils.uninstall_module(module_name, venv)
 
     # validate that modules were installed
     if not no_validate:
-        _validate(modules, venv)
+        # _validate(modules, venv)
+        _validate(final_set, venv)
 
     # create agent tar
     lgr.info('Creating tar file: {0}'.format(destination_tar))
