@@ -9,21 +9,25 @@ import sys
 
 import utils
 
+from jingen.jingen import Jingen
 
 DEFAULT_CONFIG_FILE = 'config.yaml'
 DEFAULT_OUTPUT_TAR_PATH = '{0}-{1}-agent.tar.gz'
 DEFAULT_VENV_PATH = 'cloudify/{0}-{1}-agent/env'
 
+TEMPLATE_FILE = 'included_plugins.py.js'
+TEMPLATE_DIR = 'resources'
+
 EXTERNAL_MODULES = [
     'celery==3.0.24'
 ]
 
-MODULES_LIST = [
+CORE_MODULES_LIST = [
     'cloudify_rest_client',
     'cloudify_plugins_common',
 ]
 
-PLUGINS_LIST = [
+CORE_PLUGINS_LIST = [
     'cloudify_script_plugin',
     'cloudify_diamond_plugin',
     # 'cloudify_agent_installer_plugin',
@@ -85,7 +89,7 @@ def _set_defaults(modules):
     modules['core_modules'] = {}
     modules['core_plugins'] = {}
     modules['additional_modules'] = []
-    modules['additional_plugins'] = []
+    modules['additional_plugins'] = {}
     modules['agent'] = ""
     return modules
 
@@ -101,11 +105,9 @@ def _merge_modules(modules, config):
     modules['core_plugins'].update(config.get('core_plugins', {}))
 
     additional_modules = config.get('additional_modules', [])
-    additional_plugins = config.get('additional_plugins', [])
     for additional_module in additional_modules:
         modules['additional_modules'].append(additional_module)
-    for additional_plugin in additional_plugins:
-        modules['additional_plugins'].append(additional_plugin)
+    modules['additional_plugins'].update(config.get('additional_plugins', {}))
 
     if 'cloudify_agent_module' in config:
         modules['agent'] = config['cloudify_agent_module']
@@ -131,8 +133,9 @@ def _validate(modules, venv):
     failed = []
 
     lgr.info('Validating installation...')
-    for module in modules:
-        module_name = get_module_name(module)
+    modules = modules['plugins'] + modules['modules']
+    for module_name in modules:
+        # module_name = get_module_name(module)
         lgr.info('Validating that {0} is installed.'.format(module_name))
         if not utils.check_installed(module_name, venv):
             lgr.error('It appears that {0} does not exist in {1}'.format(
@@ -159,24 +162,15 @@ class ModuleInstaller():
 
     def install_core_modules(self):
         core = self.modules['core_modules']
-        # we must run through the MODULES_LIST so that dependencies are
+        # we must run through the CORE_MODULES_LIST so that dependencies are
         # installed in order
-        for module in MODULES_LIST:
+        for module in CORE_MODULES_LIST:
             module_name = get_module_name(module)
-            if core.get(module) and core[module] == 'exclude':
-                if module in MANDATORY_MODULES:
-                    lgr.error('Module {0} is excluded but mandatory'.format(
-                        module_name))
-                    sys.exit(5)
-                else:
-                    lgr.info('Module {0} is excluded. '
-                             'it will not be a part of the agent.'.format(
-                                 module_name))
-            elif core.get(module):
+            if core.get(module):
                 lgr.info('Installing module {0} from {1}.'.format(
                     module_name, core[module]))
                 utils.install_module(core[module], self.venv)
-                self.final_set.append(module_name)
+                self.final_set['modules'].append(module_name)
             elif not core.get(module) and module in MANDATORY_MODULES:
                 lgr.info('Module {0} will be installed as a part of '
                          'cloudify-agent (This is a mandatory module).'.format(
@@ -188,7 +182,7 @@ class ModuleInstaller():
     def install_core_plugins(self):
         core = self.modules['core_plugins']
 
-        for module in PLUGINS_LIST:
+        for module in CORE_PLUGINS_LIST:
             module_name = get_module_name(module)
             if core.get(module) and core[module] == 'exclude':
                 lgr.info('Module {0} is excluded. '
@@ -198,16 +192,26 @@ class ModuleInstaller():
                 lgr.info('Installing module {0} from {1}.'.format(
                     module_name, core[module]))
                 utils.install_module(core[module], self.venv)
-                self.final_set.append(module_name)
+                self.final_set['plugins'].append(module_name)
             elif not core.get(module):
                 lgr.info('Module {0} will be installed as a part of '
                          'cloudify-agent (if applicable).'.format(module_name))
+
+    def install_additional_plugins(self):
+        additional = self.modules['additional_plugins']
+
+        for module, source in additional.items():
+            module_name = get_module_name(module)
+            lgr.info('Installing module {0} from {1}.'.format(
+                module_name, source))
+            utils.install_module(source, self.venv)
+            self.final_set['plugins'].append(module_name)
 
     def install_agent(self):
         lgr.info('Installing cloudify-agent module from {0}'.format(
             self.modules['agent']))
         utils.install_module(self.modules['agent'], self.venv)
-        self.final_set.append('cloudify-agent')
+        self.final_set['modules'].append('cloudify-agent')
 
 
 def _install(modules, venv, final_set):
@@ -227,7 +231,7 @@ def _install(modules, venv, final_set):
     lgr.info('Installing additional modules...')
     installer.install_modules(modules['additional_modules'])
     lgr.info('Installing additional plugins...')
-    installer.install_modules(modules['additional_plugins'])
+    installer.install_additional_plugins()
     installer.install_agent()
     return installer.final_set
 
@@ -236,8 +240,15 @@ def get_module_name(module):
     return module.replace('_', '-')
 
 
-def generate_includes_file(plugins_list):
-    pass
+def _update_includes_file(modules, venv):
+    i = Jingen(
+        template_file=TEMPLATE_FILE,
+        vars_source=modules,
+        output_file=os.path.join(venv, 'included_plugins.py'),
+        template_dir=os.path.join(os.path.dirname(__file__), TEMPLATE_DIR),
+        make_file=True
+    )
+    i.generate()
 
 
 def create(config=None, config_file=None, force=False, dry=False,
@@ -269,7 +280,10 @@ def create(config=None, config_file=None, force=False, dry=False,
     format `/DISTRIBUTION-agent.tar.gz`.
     """
     set_global_verbosity_level(verbose)
-    final_set = []
+    final_set = {
+        'modules': [],
+        'plugins': []
+    }
 
     if not config:
         config = _import_config(config_file) if config_file else \
@@ -341,7 +355,7 @@ def create(config=None, config_file=None, force=False, dry=False,
 
     # uninstall excluded modules
     lgr.info('Uninstalling excluded plugins (if any)...')
-    for module in PLUGINS_LIST:
+    for module in CORE_PLUGINS_LIST:
         module_name = get_module_name(module)
         if modules['core_plugins'].get(module) == 'exclude' and \
                 utils.check_installed(module_name, venv):
@@ -352,6 +366,8 @@ def create(config=None, config_file=None, force=False, dry=False,
     if not no_validate:
         # _validate(modules, venv)
         _validate(final_set, venv)
+
+    _update_includes_file(final_set, venv)
 
     # create agent tar
     lgr.info('Creating tar file: {0}'.format(destination_tar))

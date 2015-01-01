@@ -47,6 +47,7 @@ setup(
     description='Creates Cloudify Agent Packages',
     long_description=read('README.rst'),
     packages=['agent_packager'],
+    include_package_data=True,
     entry_points={
         'console_scripts': [
             'cfy-ap = agent_packager.cli:main',
