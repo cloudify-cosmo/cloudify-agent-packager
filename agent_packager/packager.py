@@ -15,7 +15,7 @@ DEFAULT_CONFIG_FILE = 'config.yaml'
 DEFAULT_OUTPUT_TAR_PATH = '{0}-{1}-agent.tar.gz'
 DEFAULT_VENV_PATH = 'cloudify/{0}-{1}-agent/env'
 
-TEMPLATE_FILE = 'included_plugins.py.js'
+TEMPLATE_FILE = 'included_plugins.py.j2'
 TEMPLATE_DIR = 'resources'
 
 EXTERNAL_MODULES = [
@@ -82,7 +82,7 @@ def _import_config(config_file=DEFAULT_CONFIG_FILE):
         raise RuntimeError('Cannot access config file')
     except yaml.parser.ParserError as ex:
         lgr.error('Invalid yaml file: {0}'.format(ex))
-        raise RuntimeError('invalid yaml file')
+        raise RuntimeError('Invalid yaml file')
 
 
 def _set_defaults(modules):

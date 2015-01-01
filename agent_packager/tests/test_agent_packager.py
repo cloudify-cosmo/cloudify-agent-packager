@@ -56,13 +56,13 @@ class TestUtils(testtools.TestCase):
     def test_set_global_verbosity_level(self, capture):
         lgr = init(base_level=logging.INFO)
 
-        ap._set_global_verbosity_level(is_verbose_output=False)
+        ap.set_global_verbosity_level(is_verbose_output=False)
         lgr.debug('TEST_LOGGER_OUTPUT')
         capture.check()
         lgr.info('TEST_LOGGER_OUTPUT')
         capture.check(('user', 'INFO', 'TEST_LOGGER_OUTPUT'))
 
-        ap._set_global_verbosity_level(is_verbose_output=True)
+        ap.set_global_verbosity_level(is_verbose_output=True)
         lgr.debug('TEST_LOGGER_OUTPUT')
         capture.check(
             ('user', 'INFO', 'TEST_LOGGER_OUTPUT'),
@@ -75,15 +75,15 @@ class TestUtils(testtools.TestCase):
 
     def test_fail_import_config_file(self):
         e = self.assertRaises(RuntimeError, ap._import_config, '')
-        self.assertEquals('cannot access config file', e.message)
+        self.assertEquals('Cannot access config file', e.message)
 
     def test_import_bad_config_file_mapping(self):
         e = self.assertRaises(Exception, ap._import_config, BAD_CONFIG_FILE)
-        self.assertIn('mapping values are not allowed here', e.message)
+        self.assertIn('mapping values are not allowed here', str(e))
 
     def test_import_bad_config_file(self):
         e = self.assertRaises(Exception, ap._import_config, BAD_CONFIG_FILE)
-        self.assertIn('mapping values are not allowed here', e.message)
+        self.assertIn('mapping values are not allowed here', str(e))
 
     def test_run(self):
         p = utils.run('uname')
@@ -101,30 +101,30 @@ class TestUtils(testtools.TestCase):
     def test_fail_create_virtualenv_bad_dir(self):
         e = self.assertRaises(
             SystemExit, utils.make_virtualenv, '/' + TEST_VENV)
-        self.assertEqual('1', e.message)
+        self.assertEqual(1, e.message)
 
     def test_fail_create_virtualenv_missing_python(self):
         e = self.assertRaises(
             SystemExit, utils.make_virtualenv, TEST_VENV,
             '/usr/bin/missing_python')
-        self.assertEqual('1', e.message)
+        self.assertEqual(1, e.message)
 
     @venv
     def test_install_module(self):
         utils.install_module(TEST_MODULE, TEST_VENV)
-        p = utils.run('{0}/bin/pip freeze'.format(TEST_VENV))
-        self.assertIn(TEST_MODULE, p.stdout)
+        pip_freeze_output = utils.get_installed(TEST_VENV).lower()
+        self.assertIn(TEST_MODULE, pip_freeze_output)
 
     @venv
     def test_install_nonexisting_module(self):
         e = self.assertRaises(
             SystemExit, utils.install_module, 'BLAH!!', TEST_VENV)
-        self.assertEqual('2', e.message)
+        self.assertEqual(2, e.message)
 
     def test_install_module_nonexisting_venv(self):
         e = self.assertRaises(
             SystemExit, utils.install_module, TEST_MODULE, 'BLAH!!')
-        self.assertEqual('2', e.message)
+        self.assertEqual(2, e.message)
 
     def test_download_file(self):
         utils.download_file(TEST_FILE, 'file')
@@ -136,7 +136,7 @@ class TestUtils(testtools.TestCase):
         e = self.assertRaises(
             SystemExit, utils.download_file,
             'http://www.google.com/x.tar.gz', 'file')
-        self.assertEqual('3', e.message)
+        self.assertEqual(3, e.message)
 
     def test_download_bad_url(self):
         e = self.assertRaises(
@@ -146,7 +146,7 @@ class TestUtils(testtools.TestCase):
     def test_download_connection_failed(self):
         e = self.assertRaises(
             ConnectionError, utils.download_file, 'http://something', 'file')
-        self.assertIn('Connection aborted', e.message)
+        self.assertIn('Connection aborted', str(e))
 
     def test_download_missing_path(self):
         e = self.assertRaises(
@@ -172,42 +172,52 @@ class TestUtils(testtools.TestCase):
     @venv
     def test_tar_no_permissions(self):
         e = self.assertRaises(SystemExit, utils.tar, TEST_VENV, '/file')
-        self.assertIn(e.message, '10')
+        self.assertIn(str(e), '10')
 
     @venv
     def test_tar_missing_source(self):
         e = self.assertRaises(SystemExit, utils.tar, 'missing', 'file')
-        self.assertIn(e.message, '10')
+        self.assertIn(str(e), '10')
         os.remove('file')
 
 
 class TestCreate(testtools.TestCase):
 
     def test_create_agent_package(self):
+        required_modules = [
+            'cloudify-plugins-common',
+            'cloudify-rest-client',
+            'cloudify-script-plugin',
+            'cloudify-fabric-plugin',
+            'cloudify-agent',
+            'pyyaml'
+        ]
+        excluded_modules = [
+            'cloudify-diamond-plugin'
+        ]
         config = ap._import_config(CONFIG_FILE)
         ap.create(None, CONFIG_FILE, force=True, verbose=True)
-        if os.path.isdir(config['venv']):
-            raise Exception('venv exists before extracting agent.')
+        try:
+            shutil.rmtree(config['venv'])
+        except:
+            pass
         os.makedirs(config['venv'])
         utils.run('tar -xzvf {0} -C {1} --strip-components=2'.format(
             config['output_tar'], BASE_DIR))
         os.remove(config['output_tar'])
         self.assertTrue(os.path.isdir(config['venv']))
-        p = utils.run('{0}/bin/pip freeze'.format(config['venv']))
-        self.assertIn('cloudify-plugins-common', p.stdout)
-        self.assertIn('cloudify-rest-client', p.stdout)
-        self.assertIn('cloudify-script-plugin', p.stdout)
-        self.assertNotIn('cloudify-diamond-plugin', p.stdout)
-        self.assertIn('pyyaml', p.stdout)
-        self.assertIn('cloudify-fabric-plugin', p.stdout)
-        self.assertIn('cloudify-agent', p.stdout)
+        pip_freeze_output = utils.get_installed(config['venv']).lower()
+        for required_module in required_modules:
+            self.assertIn(required_module, pip_freeze_output)
+        for excluded_module in excluded_modules:
+            self.assertNotIn(excluded_module, pip_freeze_output)
         shutil.rmtree(config['venv'])
 
     @venv
     def test_create_agent_package_existing_venv_no_force(self):
         e = self.assertRaises(
             SystemExit, ap.create, None, CONFIG_FILE, verbose=True)
-        self.assertEqual(e.message, '2')
+        self.assertEqual(e.message, 2)
 
     @venv
     def test_create_agent_package_tar_already_exists(self):
@@ -217,5 +227,5 @@ class TestCreate(testtools.TestCase):
             a.write('CONTENT')
         e = self.assertRaises(
             SystemExit, ap.create, None, CONFIG_FILE, verbose=True)
-        self.assertEqual(e.message, '9')
+        self.assertEqual(e.message, 9)
         os.remove(config['output_tar'])
