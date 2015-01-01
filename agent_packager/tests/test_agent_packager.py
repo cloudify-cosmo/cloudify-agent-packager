@@ -50,7 +50,7 @@ def venv(func):
     return execution_handler
 
 
-class TestBase(testtools.TestCase):
+class TestUtils(testtools.TestCase):
 
     @log_capture()
     def test_set_global_verbosity_level(self, capture):
@@ -75,15 +75,15 @@ class TestBase(testtools.TestCase):
 
     def test_fail_import_config_file(self):
         e = self.assertRaises(RuntimeError, ap._import_config, '')
-        self.assertEquals('cannot access config file', str(e))
+        self.assertEquals('cannot access config file', e.message)
 
     def test_import_bad_config_file_mapping(self):
         e = self.assertRaises(Exception, ap._import_config, BAD_CONFIG_FILE)
-        self.assertIn('mapping values are not allowed here', str(e))
+        self.assertIn('mapping values are not allowed here', e.message)
 
     def test_import_bad_config_file(self):
         e = self.assertRaises(Exception, ap._import_config, BAD_CONFIG_FILE)
-        self.assertIn('mapping values are not allowed here', str(e))
+        self.assertIn('mapping values are not allowed here', e.message)
 
     def test_run(self):
         p = utils.run('uname')
@@ -101,13 +101,13 @@ class TestBase(testtools.TestCase):
     def test_fail_create_virtualenv_bad_dir(self):
         e = self.assertRaises(
             SystemExit, utils.make_virtualenv, '/' + TEST_VENV)
-        self.assertEqual('1', str(e))
+        self.assertEqual('1', e.message)
 
     def test_fail_create_virtualenv_missing_python(self):
         e = self.assertRaises(
             SystemExit, utils.make_virtualenv, TEST_VENV,
             '/usr/bin/missing_python')
-        self.assertEqual('1', str(e))
+        self.assertEqual('1', e.message)
 
     @venv
     def test_install_module(self):
@@ -119,12 +119,12 @@ class TestBase(testtools.TestCase):
     def test_install_nonexisting_module(self):
         e = self.assertRaises(
             SystemExit, utils.install_module, 'BLAH!!', TEST_VENV)
-        self.assertEqual('2', str(e))
+        self.assertEqual('2', e.message)
 
     def test_install_module_nonexisting_venv(self):
         e = self.assertRaises(
             SystemExit, utils.install_module, TEST_MODULE, 'BLAH!!')
-        self.assertEqual('2', str(e))
+        self.assertEqual('2', e.message)
 
     def test_download_file(self):
         utils.download_file(TEST_FILE, 'file')
@@ -136,17 +136,17 @@ class TestBase(testtools.TestCase):
         e = self.assertRaises(
             SystemExit, utils.download_file,
             'http://www.google.com/x.tar.gz', 'file')
-        self.assertEqual('3', str(e))
+        self.assertEqual('3', e.message)
 
     def test_download_bad_url(self):
         e = self.assertRaises(
             Exception, utils.download_file, 'something', 'file')
-        self.assertIn('Invalid URL', str(e))
+        self.assertIn('Invalid URL', e.message)
 
     def test_download_connection_failed(self):
         e = self.assertRaises(
             ConnectionError, utils.download_file, 'http://something', 'file')
-        self.assertIn('Connection aborted', str(e))
+        self.assertIn('Connection aborted', e.message)
 
     def test_download_missing_path(self):
         e = self.assertRaises(
@@ -156,19 +156,6 @@ class TestBase(testtools.TestCase):
     def test_download_no_permissions(self):
         e = self.assertRaises(IOError, utils.download_file, TEST_FILE, '/file')
         self.assertIn('Permission denied', e)
-
-    @venv
-    def test_download_manager_code(self):
-        d = ap._get_manager(MANAGER, TEST_VENV)
-        self.assertTrue(os.path.isdir(
-            os.path.join(d, 'plugins/plugin-installer')))
-        self.assertTrue(os.path.isdir(
-            os.path.join(d, 'plugins/agent-installer')))
-        self.assertTrue(os.path.isdir(
-            os.path.join(d, 'plugins/windows-plugin-installer')))
-        self.assertTrue(os.path.isdir(
-            os.path.join(d, 'plugins/windows-agent-installer')))
-        shutil.rmtree(d)
 
     def test_tar(self):
         os.makedirs('dir')
@@ -185,13 +172,16 @@ class TestBase(testtools.TestCase):
     @venv
     def test_tar_no_permissions(self):
         e = self.assertRaises(SystemExit, utils.tar, TEST_VENV, '/file')
-        self.assertIn(str(e), '10')
+        self.assertIn(e.message, '10')
 
     @venv
     def test_tar_missing_source(self):
         e = self.assertRaises(SystemExit, utils.tar, 'missing', 'file')
-        self.assertIn(str(e), '10')
+        self.assertIn(e.message, '10')
         os.remove('file')
+
+
+class TestCreate(testtools.TestCase):
 
     def test_create_agent_package(self):
         config = ap._import_config(CONFIG_FILE)
@@ -208,13 +198,16 @@ class TestBase(testtools.TestCase):
         self.assertIn('cloudify-rest-client', p.stdout)
         self.assertIn('cloudify-script-plugin', p.stdout)
         self.assertNotIn('cloudify-diamond-plugin', p.stdout)
+        self.assertIn('pyyaml', p.stdout)
+        self.assertIn('cloudify-fabric-plugin', p.stdout)
+        self.assertIn('cloudify-agent', p.stdout)
         shutil.rmtree(config['venv'])
 
     @venv
     def test_create_agent_package_existing_venv_no_force(self):
         e = self.assertRaises(
             SystemExit, ap.create, None, CONFIG_FILE, verbose=True)
-        self.assertEqual(str(e), '2')
+        self.assertEqual(e.message, '2')
 
     @venv
     def test_create_agent_package_tar_already_exists(self):
@@ -224,5 +217,5 @@ class TestBase(testtools.TestCase):
             a.write('CONTENT')
         e = self.assertRaises(
             SystemExit, ap.create, None, CONFIG_FILE, verbose=True)
-        self.assertEqual(str(e), '9')
+        self.assertEqual(e.message, '9')
         os.remove(config['output_tar'])
