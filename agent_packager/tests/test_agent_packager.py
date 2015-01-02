@@ -16,12 +16,13 @@
 __author__ = 'nir0s'
 
 import agent_packager.packager as ap
+import agent_packager.cli as cli
 import agent_packager.utils as utils
 from agent_packager.logger import init
 from requests import ConnectionError
 
 from contextlib import closing
-from testfixtures import log_capture
+from testfixtures import LogCapture
 import logging
 import tarfile
 import testtools
@@ -52,21 +53,21 @@ def venv(func):
 
 class TestUtils(testtools.TestCase):
 
-    @log_capture()
-    def test_set_global_verbosity_level(self, capture):
+    def test_set_global_verbosity_level(self):
         lgr = init(base_level=logging.INFO)
 
-        ap.set_global_verbosity_level(is_verbose_output=False)
-        lgr.debug('TEST_LOGGER_OUTPUT')
-        capture.check()
-        lgr.info('TEST_LOGGER_OUTPUT')
-        capture.check(('user', 'INFO', 'TEST_LOGGER_OUTPUT'))
+        with LogCapture() as l:
+            ap.set_global_verbosity_level(is_verbose_output=False)
+            lgr.debug('TEST_LOGGER_OUTPUT')
+            l.check()
+            lgr.info('TEST_LOGGER_OUTPUT')
+            l.check(('user', 'INFO', 'TEST_LOGGER_OUTPUT'))
 
-        ap.set_global_verbosity_level(is_verbose_output=True)
-        lgr.debug('TEST_LOGGER_OUTPUT')
-        capture.check(
-            ('user', 'INFO', 'TEST_LOGGER_OUTPUT'),
-            ('user', 'DEBUG', 'TEST_LOGGER_OUTPUT'))
+            ap.set_global_verbosity_level(is_verbose_output=True)
+            lgr.debug('TEST_LOGGER_OUTPUT')
+            l.check(
+                ('user', 'INFO', 'TEST_LOGGER_OUTPUT'),
+                ('user', 'DEBUG', 'TEST_LOGGER_OUTPUT'))
 
     def test_import_config_file(self):
         outcome = ap._import_config(CONFIG_FILE)
@@ -180,19 +181,27 @@ class TestUtils(testtools.TestCase):
 class TestCreate(testtools.TestCase):
 
     def test_create_agent_package(self):
+        cli_options = {
+            '--config': CONFIG_FILE,
+            '--force': True,
+            '--dryrun': False,
+            '--no-validation': False,
+            '--verbose': True
+        }
         required_modules = [
             'cloudify-plugins-common',
             'cloudify-rest-client',
-            # 'cloudify-script-plugin',
             'cloudify-fabric-plugin',
             'cloudify-agent',
             'pyyaml'
         ]
         excluded_modules = [
-            'cloudify-diamond-plugin'
+            'cloudify-diamond-plugin',
+            'cloudify-script-plugin'
         ]
         config = ap._import_config(CONFIG_FILE)
-        ap.create(None, CONFIG_FILE, force=True, verbose=True)
+        # ap.create(None, CONFIG_FILE, force=True, verbose=True)
+        cli._run(cli_options)
         shutil.rmtree(config['venv'])
         os.makedirs(config['venv'])
         utils.run('tar -xzvf {0} -C {1} --strip-components=2'.format(
@@ -205,6 +214,20 @@ class TestCreate(testtools.TestCase):
         for excluded_module in excluded_modules:
             self.assertNotIn(excluded_module, pip_freeze_output)
         shutil.rmtree(config['venv'])
+
+    def test_dryrun(self):
+        cli_options = {
+            '--config': CONFIG_FILE,
+            '--force': True,
+            '--dryrun': True,
+            '--no-validation': False,
+            '--verbose': True
+        }
+        with LogCapture(level=logging.INFO) as l:
+            e = self.assertRaises(SystemExit, cli._run, cli_options)
+            l.check(('user', 'INFO', 'Creating virtualenv: {0}'.format(TEST_VENV)),  # NOQA
+                    ('user', 'INFO', 'Dryrun complete'))
+        self.assertIn('0', str(e))
 
     @venv
     def test_create_agent_package_existing_venv_no_force(self):

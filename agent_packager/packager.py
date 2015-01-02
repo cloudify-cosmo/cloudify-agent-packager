@@ -253,7 +253,7 @@ def _update_includes_file(modules, venv):
     i.generate()
 
 
-def create(config=None, config_file=None, force=False, dry=False,
+def create(config=None, config_file=None, force=False, dryrun=False,
            no_validate=False, verbose=True):
     """Creates an agent package (tar.gz)
 
@@ -343,12 +343,12 @@ def create(config=None, config_file=None, force=False, dry=False,
     modules = _set_defaults(modules)
     modules = _merge_modules(modules, config)
 
-    if dry:
+    if dryrun:
         set_global_verbosity_level(True)
     lgr.debug('Modules to install: {0}'.format(json.dumps(
         modules, sort_keys=True, indent=4, separators=(',', ': '))))
 
-    if dry:
+    if dryrun:
         lgr.info('Dryrun complete')
         sys.exit(0)
 

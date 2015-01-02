@@ -6,7 +6,7 @@ python_path: '/usr/bin/python'
 cloudify_agent_module: https://github.com/nir0s/cloudify-agent/archive/master.tar.gz
 core_modules:
     cloudify_plugins_common: https://github.com/cloudify-cosmo/cloudify-plugins-common/archive/3.1.tar.gz
-    cloudify_rest_client: https://github.com/cloudify-cosmo/cloudify-rest-client/archive/3.1.tar.gz
+    cloudify_rest_client: false
 core_plugins:
     cloudify_script_plugin: exclude
     cloudify_diamond_plugin: false
@@ -19,4 +19,4 @@ additional_modules:
 additional_plugins:
     cloudify-fabric-plugin: https://github.com/cloudify-cosmo/cloudify-fabric-plugin/archive/1.1.tar.gz
 output_tar: Ubuntu-trusty-agent.tar.gz
-keep_venv: true
+keep_venv: false

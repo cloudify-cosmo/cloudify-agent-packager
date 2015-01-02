@@ -36,28 +36,20 @@ def ver_check():
     return version
 
 
-def agent_packager_run(o):
-    packager.create(
-        config_file=o.get('--config'),
-        force=o.get('--force'),
-        dry=o.get('--dryrun'),
-        no_validate=o.get('--no-validation'),
-        verbose=o.get('--verbose')
-        )
-
-
-def agent_packager(test_options=None):
-    """Main entry point for script."""
+def _run(test_options):
     version = ver_check()
     options = test_options or docopt(__doc__, version=version)
     packager.set_global_verbosity_level(options.get('--verbose'))
     lgr.debug(options)
-    agent_packager_run(options)
 
-
-def main():
-    agent_packager()
+    packager.create(
+        config_file=options.get('--config'),
+        force=options.get('--force'),
+        dryrun=options.get('--dryrun'),
+        no_validate=options.get('--no-validation'),
+        verbose=options.get('--verbose')
+        )
 
 
 if __name__ == '__main__':
-    main()
+    _run()
