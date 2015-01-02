@@ -4,7 +4,6 @@ import subprocess
 import logger
 import sys
 import requests
-import tarfile
 import re
 
 lgr = logger.init()
@@ -117,8 +116,3 @@ def tar(source, destination):
     if not r.returncode == 0:
         lgr.error('Failed to create tar file.')
         sys.exit(10)
-
-
-def untar(source, destination):
-    with tarfile.open(source, 'r:gz') as tar:
-        tar.extractall(destination)

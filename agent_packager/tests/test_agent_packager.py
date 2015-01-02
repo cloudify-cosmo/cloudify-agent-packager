@@ -74,16 +74,12 @@ class TestUtils(testtools.TestCase):
         self.assertIn('distribution', outcome.keys())
 
     def test_fail_import_config_file(self):
-        e = self.assertRaises(RuntimeError, ap._import_config, '')
-        self.assertEquals('Cannot access config file', e.message)
+        e = self.assertRaises(SystemExit, ap._import_config, '')
+        self.assertEquals('11', str(e))
 
     def test_import_bad_config_file_mapping(self):
-        e = self.assertRaises(Exception, ap._import_config, BAD_CONFIG_FILE)
-        self.assertIn('mapping values are not allowed here', str(e))
-
-    def test_import_bad_config_file(self):
-        e = self.assertRaises(Exception, ap._import_config, BAD_CONFIG_FILE)
-        self.assertIn('mapping values are not allowed here', str(e))
+        e = self.assertRaises(SystemExit, ap._import_config, BAD_CONFIG_FILE)
+        self.assertIn('12', str(e))
 
     def test_run(self):
         p = utils.run('uname')
@@ -187,7 +183,7 @@ class TestCreate(testtools.TestCase):
         required_modules = [
             'cloudify-plugins-common',
             'cloudify-rest-client',
-            'cloudify-script-plugin',
+            # 'cloudify-script-plugin',
             'cloudify-fabric-plugin',
             'cloudify-agent',
             'pyyaml'
@@ -197,10 +193,7 @@ class TestCreate(testtools.TestCase):
         ]
         config = ap._import_config(CONFIG_FILE)
         ap.create(None, CONFIG_FILE, force=True, verbose=True)
-        try:
-            shutil.rmtree(config['venv'])
-        except:
-            pass
+        shutil.rmtree(config['venv'])
         os.makedirs(config['venv'])
         utils.run('tar -xzvf {0} -C {1} --strip-components=2'.format(
             config['output_tar'], BASE_DIR))

@@ -79,10 +79,12 @@ def _import_config(config_file=DEFAULT_CONFIG_FILE):
             return yaml.safe_load(c.read())
     except IOError as ex:
         lgr.error(str(ex))
-        raise RuntimeError('Cannot access config file')
-    except yaml.parser.ParserError as ex:
-        lgr.error('Invalid yaml file: {0}'.format(ex))
-        raise RuntimeError('Invalid yaml file')
+        lgr.error('Cannot access config file')
+        sys.exit(11)
+    except (yaml.parser.ParserError, yaml.scanner.ScannerError) as ex:
+        lgr.error(str(ex))
+        lgr.error('Invalid yaml file')
+        sys.exit(12)
 
 
 def _set_defaults(modules):
