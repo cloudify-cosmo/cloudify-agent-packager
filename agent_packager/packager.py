@@ -8,6 +8,7 @@ import os
 import sys
 
 import utils
+import codes
 
 from jingen.jingen import Jingen
 
@@ -80,11 +81,11 @@ def _import_config(config_file=DEFAULT_CONFIG_FILE):
     except IOError as ex:
         lgr.error(str(ex))
         lgr.error('Cannot access config file')
-        sys.exit(11)
+        sys.exit(codes.mapping['could_not_access_config_file'])
     except (yaml.parser.ParserError, yaml.scanner.ScannerError) as ex:
         lgr.error(str(ex))
         lgr.error('Invalid yaml file')
-        sys.exit(12)
+        sys.exit(codes.mapping['invalid_yaml_file'])
 
 
 def _set_defaults(modules):
@@ -119,7 +120,7 @@ def _merge_modules(modules, config):
     else:
         lgr.error('Either `cloudify_agent_module` or `cloudify_agent_version` '
                   'must be specified in the yaml configuration file.')
-        sys.exit(3)
+        sys.exit(codes.mapping['missing_cloudify_agent_config'])
     return modules
 
 
@@ -147,7 +148,7 @@ def _validate(modules, venv):
     if failed:
         lgr.error('Validation failed. some of the requested modules were not '
                   'installed.')
-        sys.exit(10)
+        sys.exit(codes.mapping['installation_validation_failed'])
 
 
 class ModuleInstaller():
@@ -299,7 +300,7 @@ def create(config=None, config_file=None, force=False, dryrun=False,
                   'and could not be retrieved automatically. '
                   'please specify the distribution in the yaml. '
                   '({0})'.format(ex.message))
-        sys.exit(1)
+        sys.exit(codes.mapping['could_not_identify_distribution'])
 
     python = config.get('python_path', '/usr/bin/python')
     venv = config.get('venv', DEFAULT_VENV_PATH.format(distro, release))
@@ -323,7 +324,7 @@ def create(config=None, config_file=None, force=False, dryrun=False,
             lgr.error('Virtualenv already exists at {0}. '
                       'You can use the -f flag or delete the '
                       'previous env.'.format(venv))
-            sys.exit(2)
+            sys.exit(codes.mapping['virtualenv_already_exists'])
 
     lgr.info('Creating virtualenv: {0}'.format(venv))
     utils.make_virtualenv(venv, python)
@@ -335,7 +336,7 @@ def create(config=None, config_file=None, force=False, dryrun=False,
     if os.path.exists(destination_tar):
             lgr.error('Destination tar already exists: {0}'.format(
                 destination_tar))
-            sys.exit(9)
+            sys.exit(codes.mapping['tar_already_exists'])
 
     # create modules dictionary
     lgr.debug('Retrieving modules to install...')
@@ -350,7 +351,7 @@ def create(config=None, config_file=None, force=False, dryrun=False,
 
     if dryrun:
         lgr.info('Dryrun complete')
-        sys.exit(0)
+        sys.exit(codes.mapping['dryrun_complete'])
 
     # install all requested modules
     final_set = _install(modules, venv, final_set)

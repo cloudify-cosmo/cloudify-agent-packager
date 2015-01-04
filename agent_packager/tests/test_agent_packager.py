@@ -18,6 +18,7 @@ __author__ = 'nir0s'
 import agent_packager.packager as ap
 import agent_packager.cli as cli
 import agent_packager.utils as utils
+import agent_packager.codes as codes
 from agent_packager.logger import init
 from requests import ConnectionError
 
@@ -76,11 +77,12 @@ class TestUtils(testtools.TestCase):
 
     def test_fail_import_config_file(self):
         e = self.assertRaises(SystemExit, ap._import_config, '')
-        self.assertEquals('11', str(e))
+        self.assertEqual(
+            codes.mapping['could_not_access_config_file'], e.message)
 
     def test_import_bad_config_file_mapping(self):
         e = self.assertRaises(SystemExit, ap._import_config, BAD_CONFIG_FILE)
-        self.assertIn('12', str(e))
+        self.assertEqual(codes.mapping['invalid_yaml_file'], e.message)
 
     def test_run(self):
         p = utils.run('uname')
@@ -98,13 +100,15 @@ class TestUtils(testtools.TestCase):
     def test_fail_create_virtualenv_bad_dir(self):
         e = self.assertRaises(
             SystemExit, utils.make_virtualenv, '/' + TEST_VENV)
-        self.assertEqual(1, e.message)
+        self.assertEqual(
+            codes.mapping['could_not_create_virtualenv'], e.message)
 
     def test_fail_create_virtualenv_missing_python(self):
         e = self.assertRaises(
             SystemExit, utils.make_virtualenv, TEST_VENV,
             '/usr/bin/missing_python')
-        self.assertEqual(1, e.message)
+        self.assertEqual(
+            codes.mapping['could_not_create_virtualenv'], e.message)
 
     @venv
     def test_install_module(self):
@@ -116,12 +120,12 @@ class TestUtils(testtools.TestCase):
     def test_install_nonexisting_module(self):
         e = self.assertRaises(
             SystemExit, utils.install_module, 'BLAH!!', TEST_VENV)
-        self.assertEqual(2, e.message)
+        self.assertEqual(codes.mapping['could_not_install_module'], e.message)
 
     def test_install_module_nonexisting_venv(self):
         e = self.assertRaises(
             SystemExit, utils.install_module, TEST_MODULE, 'BLAH!!')
-        self.assertEqual(2, e.message)
+        self.assertEqual(codes.mapping['could_not_install_module'], e.message)
 
     def test_download_file(self):
         utils.download_file(TEST_FILE, 'file')
@@ -133,7 +137,8 @@ class TestUtils(testtools.TestCase):
         e = self.assertRaises(
             SystemExit, utils.download_file,
             'http://www.google.com/x.tar.gz', 'file')
-        self.assertEqual(3, e.message)
+        self.assertEqual(
+            codes.mapping['could_not_download_file'], e.message)
 
     def test_download_bad_url(self):
         e = self.assertRaises(
@@ -169,12 +174,12 @@ class TestUtils(testtools.TestCase):
     @venv
     def test_tar_no_permissions(self):
         e = self.assertRaises(SystemExit, utils.tar, TEST_VENV, '/file')
-        self.assertIn(str(e), '10')
+        self.assertEqual(e.message, codes.mapping['failed_to_create_tar'])
 
     @venv
     def test_tar_missing_source(self):
         e = self.assertRaises(SystemExit, utils.tar, 'missing', 'file')
-        self.assertIn(str(e), '10')
+        self.assertEqual(e.message, codes.mapping['failed_to_create_tar'])
         os.remove('file')
 
 
@@ -200,9 +205,9 @@ class TestCreate(testtools.TestCase):
             'cloudify-script-plugin'
         ]
         config = ap._import_config(CONFIG_FILE)
-        # ap.create(None, CONFIG_FILE, force=True, verbose=True)
         cli._run(cli_options)
-        shutil.rmtree(config['venv'])
+        if os.path.isdir(config['venv']):
+            shutil.rmtree(config['venv'])
         os.makedirs(config['venv'])
         utils.run('tar -xzvf {0} -C {1} --strip-components=2'.format(
             config['output_tar'], BASE_DIR))
@@ -225,15 +230,26 @@ class TestCreate(testtools.TestCase):
         }
         with LogCapture(level=logging.INFO) as l:
             e = self.assertRaises(SystemExit, cli._run, cli_options)
-            l.check(('user', 'INFO', 'Creating virtualenv: {0}'.format(TEST_VENV)),  # NOQA
-                    ('user', 'INFO', 'Dryrun complete'))
-        self.assertIn('0', str(e))
+            l.check(('user', 'INFO', 'Creating virtualenv: {0}'.format(
+                TEST_VENV)),
+                ('user', 'INFO', 'Dryrun complete'))
+        self.assertEqual(codes.mapping['dryrun_complete'], e.message)
+
+    @venv
+    def test_create_agent_package_no_cloudify_agent_configured(self):
+        config = ap._import_config(CONFIG_FILE)
+        del config['cloudify_agent_module']
+
+        e = self.assertRaises(
+            SystemExit, ap.create, config, None, force=True, verbose=True)
+        self.assertEqual(
+            e.message, codes.mapping['missing_cloudify_agent_config'])
 
     @venv
     def test_create_agent_package_existing_venv_no_force(self):
         e = self.assertRaises(
             SystemExit, ap.create, None, CONFIG_FILE, verbose=True)
-        self.assertEqual(e.message, 2)
+        self.assertEqual(e.message, codes.mapping['virtualenv_already_exists'])
 
     @venv
     def test_create_agent_package_tar_already_exists(self):
@@ -243,5 +259,5 @@ class TestCreate(testtools.TestCase):
             a.write('CONTENT')
         e = self.assertRaises(
             SystemExit, ap.create, None, CONFIG_FILE, verbose=True)
-        self.assertEqual(e.message, 9)
+        self.assertEqual(e.message, codes.mapping['tar_already_exists'])
         os.remove(config['output_tar'])
