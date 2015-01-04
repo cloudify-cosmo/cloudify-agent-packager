@@ -19,4 +19,4 @@ additional_modules:
 additional_plugins:
     cloudify-fabric-plugin: https://github.com/cloudify-cosmo/cloudify-fabric-plugin/archive/1.1.tar.gz
 output_tar: Ubuntu-trusty-agent.tar.gz
-keep_venv: true
+keep_venv: false
