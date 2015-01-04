@@ -36,7 +36,7 @@ def ver_check():
     return version
 
 
-def _run(test_options):
+def _run(test_options=None):
     version = ver_check()
     options = test_options or docopt(__doc__, version=version)
     packager.set_global_verbosity_level(options.get('--verbose'))
@@ -50,6 +50,8 @@ def _run(test_options):
         verbose=options.get('--verbose')
         )
 
+def main():
+    _run()
 
 if __name__ == '__main__':
-    _run()
+    main()
