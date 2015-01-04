@@ -252,8 +252,6 @@ def _update_includes_file(modules, venv):
         [venv, 'lib', 'python' + sys.version[:3], 'site-packages'])
     output_file = os.path.join(
         site_packages_path, 'cloudify_agent', INCLUDES_FILE)
-    lgr.info(site_packages_path)
-    lgr.info(output_file)
     i = Jingen(
         template_file=TEMPLATE_FILE,
         vars_source=modules,
