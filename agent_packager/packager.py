@@ -16,6 +16,7 @@ DEFAULT_CONFIG_FILE = 'config.yaml'
 DEFAULT_OUTPUT_TAR_PATH = '{0}-{1}-agent.tar.gz'
 DEFAULT_VENV_PATH = 'cloudify/{0}-{1}-agent/env'
 
+INCLUDES_FILE = 'included_plugins.py'
 TEMPLATE_FILE = 'included_plugins.py.j2'
 TEMPLATE_DIR = 'resources'
 
@@ -244,10 +245,19 @@ def get_module_name(module):
 
 
 def _update_includes_file(modules, venv):
+
+    lgr.debug('generating includes file')
+
+    site_packages_path = os.sep.join(
+        [venv, 'lib', 'python' + sys.version[:3], 'site-packages'])
+    output_file = os.path.join(
+        site_packages_path, 'cloudify_agent', INCLUDES_FILE)
+    lgr.info(site_packages_path)
+    lgr.info(output_file)
     i = Jingen(
         template_file=TEMPLATE_FILE,
         vars_source=modules,
-        output_file=os.path.join(venv, 'included_plugins.py'),
+        output_file=output_file,
         template_dir=os.path.join(os.path.dirname(__file__), TEMPLATE_DIR),
         make_file=True
     )
@@ -296,10 +306,11 @@ def create(config=None, config_file=None, force=False, dryrun=False,
         distro = config.get('distribution', platform.dist()[0])
         release = config.get('release', platform.dist()[2])
     except Exception as ex:
-        lgr.error('Distribution not found in configuration '
-                  'and could not be retrieved automatically. '
-                  'please specify the distribution in the yaml. '
-                  '({0})'.format(ex.message))
+        lgr.error(
+            'Distribution not found in configuration '
+            'and could not be retrieved automatically. '
+            'please specify the distribution in the yaml. '
+            '({0})'.format(ex.message))
         sys.exit(codes.mapping['could_not_identify_distribution'])
 
     python = config.get('python_path', '/usr/bin/python')
@@ -376,14 +387,15 @@ def create(config=None, config_file=None, force=False, dryrun=False,
     lgr.info('Creating tar file: {0}'.format(destination_tar))
     utils.tar(venv, destination_tar)
 
+    lgr.info('The following modules were installed in the agent:\n{0}'.format(
+        utils.get_installed(venv)))
+
     # remove virtualenv dir
     if not keep_venv:
         lgr.info('Removing origin virtualenv')
         shutil.rmtree(venv)
 
     lgr.info('Process complete!')
-    lgr.info('The following modules were installed in the agent:\n{0}'.format(
-        utils.get_installed(venv)))
 
 
 class PackagerError(Exception):
