@@ -274,7 +274,7 @@ def _uninstall_excluded(modules, venv):
         module_name = get_module_name(module)
         if modules['core_plugins'].get(module) == 'exclude' and \
                 utils.check_installed(module_name, venv):
-            lgr.info('uninstalling {0}'.format(module_name))
+            lgr.info('Uninstalling {0}'.format(module_name))
             utils.uninstall_module(module_name, venv)
 
 
@@ -284,12 +284,15 @@ def get_module_name(module):
 
 def _generate_includes_file(modules, venv):
 
-    lgr.debug('generating includes file')
+    lgr.debug('Generating includes file')
 
-    site_packages_path = os.sep.join(
-        [venv, 'lib', 'python' + sys.version[:3], 'site-packages'])
+    # site_packages_path = os.sep.join(
+    #     [venv, 'lib', 'python' + sys.version[:3], 'site-packages'])
+    process = utils.run('{0}/bin/python -c "import cloudify_agent;'
+                        ' print cloudify_agent.__file__"'.format(venv))
+    site_packages_path = os.path.dirname(process.stdout)
     output_file = os.path.join(
-        site_packages_path, 'cloudify_agent', INCLUDES_FILE)
+        site_packages_path, INCLUDES_FILE)
     lgr.debug('Writing includes file to: {0}'.format(output_file))
     i = Jingen(
         template_file=TEMPLATE_FILE,
