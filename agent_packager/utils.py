@@ -112,6 +112,7 @@ def tar(source, destination):
     # with closing(tarfile.open(destination, "w:gz")) as tar:
     #     tar.add(source, arcname=os.path.basename(source))
     # WORKAROUND IMPLEMENTATION
+    lgr.info('Creating tar file: {0}'.format(destination))
     r = run('tar czvf {0} {1}'.format(destination, source), no_print=True)
     if not r.returncode == 0:
         lgr.error('Failed to create tar file.')

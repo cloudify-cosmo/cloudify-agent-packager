@@ -89,7 +89,34 @@ def _import_config(config_file=DEFAULT_CONFIG_FILE):
         sys.exit(codes.mapping['invalid_yaml_file'])
 
 
-def _set_defaults(modules):
+def _make_venv(venv, python, force):
+    if os.path.isdir(venv):
+        if force:
+            lgr.info('Removing previous virtualenv...')
+            shutil.rmtree(venv)
+        else:
+            lgr.error('Virtualenv already exists at {0}. '
+                      'You can use the -f flag or delete the '
+                      'previous env.'.format(venv))
+            sys.exit(codes.mapping['virtualenv_already_exists'])
+
+    lgr.info('Creating virtualenv: {0}'.format(venv))
+    utils.make_virtualenv(venv, python)
+
+
+def _handle_output_file(destination_tar, force):
+    if os.path.isfile(destination_tar) and force:
+        lgr.info('Removing previous agent package...')
+        os.remove(destination_tar)
+    if os.path.exists(destination_tar):
+            lgr.error('Destination tar already exists: {0}'.format(
+                destination_tar))
+            sys.exit(codes.mapping['tar_already_exists'])
+
+
+def _set_defaults():
+    lgr.debug('Retrieving modules to install...')
+    modules = {}
     modules['core_modules'] = {}
     modules['core_plugins'] = {}
     modules['additional_modules'] = []
@@ -105,6 +132,7 @@ def _merge_modules(modules, config):
     modules and the cloudify-agent module.
     :param dict config: dict containing the config.
     """
+    lgr.debug('Merging default modules with config...')
     modules['core_modules'].update(config.get('core_modules', {}))
     modules['core_plugins'].update(config.get('core_plugins', {}))
 
@@ -240,6 +268,16 @@ def _install(modules, venv, final_set):
     return installer.final_set
 
 
+def _uninstall_excluded(modules, venv):
+    lgr.info('Uninstalling excluded plugins (if any)...')
+    for module in CORE_PLUGINS_LIST:
+        module_name = get_module_name(module)
+        if modules['core_plugins'].get(module) == 'exclude' and \
+                utils.check_installed(module_name, venv):
+            lgr.info('uninstalling {0}'.format(module_name))
+            utils.uninstall_module(module_name, venv)
+
+
 def get_module_name(module):
     return module.replace('_', '-')
 
@@ -271,8 +309,8 @@ def create(config=None, config_file=None, force=False, dryrun=False,
     If it can't identify it for some reason, you'll have to supply a
     `distribution` config object in the config.yaml.
 
-    A virtualenv will be created under `/DISTRIBUTION-agent/env` unless
-    configured in the yaml under the `venv` property.
+    A virtualenv will be created under cloudify/DISTRIBUTION-RELEASE-agent/env
+    unless configured in the yaml under the `venv` property.
     The order of the modules' installation is as follows:
 
     cloudify-rest-service
@@ -285,18 +323,22 @@ def create(config=None, config_file=None, force=False, dryrun=False,
     cloudify-windows-plugin-installer-plugin
     cloudify-agent
     any additional modules specified under `additional_modules` in the yaml.
+    any additional plugins specified under `additional_plugins` in the yaml.
 
-    Once all modules are installed, a tar.gz file will be created. The
-    `output_tar` config object can be specified to determine the path to the
-    output file. If omitted, a default path will be given with the
-    format `/DISTRIBUTION-agent.tar.gz`.
+    Once all modules are installed, excluded modules will be uninstalled;
+    installation validation will occur; an included_plugins file will be
+    generated and a tar.gz file will be created.
+
+    The `output_tar` config object can be specified to determine the path to
+    the output file. If omitted, a default path will be given with the
+    format `DISTRIBUTION-RELEASE-agent.tar.gz`.
     """
     set_global_verbosity_level(verbose)
-    final_set = {
-        'modules': [],
-        'plugins': []
-    }
 
+    # this will be updated with installed plugins and modules and used
+    # to validate the installation and create the includes file
+    final_set = {'modules': [], 'plugins': []}
+    # import config
     if not config:
         config = _import_config(config_file) if config_file else \
             _import_config()
@@ -311,89 +353,50 @@ def create(config=None, config_file=None, force=False, dryrun=False,
             'please specify the distribution in the yaml. '
             '({0})'.format(ex.message))
         sys.exit(codes.mapping['could_not_identify_distribution'])
-
     python = config.get('python_path', '/usr/bin/python')
     venv = config.get('venv', DEFAULT_VENV_PATH.format(distro, release))
-    keep_venv = config.get('keep_venv', False)
-    destination_tar = config.get('output_tar',
-                                 DEFAULT_OUTPUT_TAR_PATH.format(
-                                     distro, release))
+    destination_tar = config.get(
+        'output_tar', DEFAULT_OUTPUT_TAR_PATH.format(distro, release))
 
     lgr.debug('Distibution is: {0}'.format(distro))
     lgr.debug('Distribution release is: {0}'.format(release))
     lgr.debug('Python path is: {0}'.format(python))
     lgr.debug('venv is: {0}'.format(venv))
     lgr.debug('Destination tarfile is: {0}'.format(destination_tar))
-
-    # virtualenv
-    if os.path.isdir(venv):
-        if force:
-            lgr.info('Removing previous virtualenv...')
-            shutil.rmtree(venv)
-        else:
-            lgr.error('Virtualenv already exists at {0}. '
-                      'You can use the -f flag or delete the '
-                      'previous env.'.format(venv))
-            sys.exit(codes.mapping['virtualenv_already_exists'])
-
-    lgr.info('Creating virtualenv: {0}'.format(venv))
-    utils.make_virtualenv(venv, python)
-
-    # output file
-    if os.path.isfile(destination_tar) and force:
-        lgr.info('Removing previous agent package...')
-        os.remove(destination_tar)
-    if os.path.exists(destination_tar):
-            lgr.error('Destination tar already exists: {0}'.format(
-                destination_tar))
-            sys.exit(codes.mapping['tar_already_exists'])
-
-    # create modules dictionary
-    lgr.debug('Retrieving modules to install...')
-    modules = {}
-    modules = _set_defaults(modules)
+    # create virtualenv
+    _make_venv(venv, python, force)
+    # remove output file or alert on existing
+    _handle_output_file(destination_tar, force)
+    # create modules dict
+    modules = _set_defaults()
     modules = _merge_modules(modules, config)
-
+    # handle a dryun
     if dryrun:
         set_global_verbosity_level(True)
-    lgr.debug('Modules to install: {0}'.format(json.dumps(
+    lgr.debug('Modules and plugins to install: {0}'.format(json.dumps(
         modules, sort_keys=True, indent=4, separators=(',', ': '))))
-
     if dryrun:
         lgr.info('Dryrun complete')
         sys.exit(codes.mapping['dryrun_complete'])
-
-    # install all requested modules
+    # install all required modules
     final_set = _install(modules, venv, final_set)
-
     # uninstall excluded modules
-    lgr.info('Uninstalling excluded plugins (if any)...')
-    for module in CORE_PLUGINS_LIST:
-        module_name = get_module_name(module)
-        if modules['core_plugins'].get(module) == 'exclude' and \
-                utils.check_installed(module_name, venv):
-            lgr.info('uninstalling {0}'.format(module_name))
-            utils.uninstall_module(module_name, venv)
-
-    # validate that modules were installed
+    _uninstall_excluded(modules, venv)
+    # validate (or not) that all required modules were installed
     if not no_validate:
-        # _validate(modules, venv)
         _validate(final_set, venv)
-
+    # generate the includes file
     _update_includes_file(final_set, venv)
-
     # create agent tar
-    lgr.info('Creating tar file: {0}'.format(destination_tar))
     utils.tar(venv, destination_tar)
 
-    lgr.info('The following modules were installed in the agent:\n{0}'.format(
-        utils.get_installed(venv)))
-
-    # remove virtualenv dir
-    if not keep_venv:
+    lgr.info('The following modules and plugins were installed '
+             'in the agent:\n{0}'.format(utils.get_installed(venv)))
+    # remove (or not) virtualenv
+    if not config.get('keep_venv'):
         lgr.info('Removing origin virtualenv')
         shutil.rmtree(venv)
-
+    # duh!
     lgr.info('Process complete!')
 
 
