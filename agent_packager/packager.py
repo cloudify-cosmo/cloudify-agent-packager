@@ -286,13 +286,11 @@ def _generate_includes_file(modules, venv):
 
     lgr.debug('Generating includes file')
 
-    # site_packages_path = os.sep.join(
-    #     [venv, 'lib', 'python' + sys.version[:3], 'site-packages'])
     process = utils.run('{0}/bin/python -c "import cloudify_agent;'
                         ' print cloudify_agent.__file__"'.format(venv))
-    site_packages_path = os.path.dirname(process.stdout)
+    cloudify_agent_module_path = os.path.dirname(process.stdout)
     output_file = os.path.join(
-        site_packages_path, INCLUDES_FILE)
+        cloudify_agent_module_path, INCLUDES_FILE)
     lgr.debug('Writing includes file to: {0}'.format(output_file))
     i = Jingen(
         template_file=TEMPLATE_FILE,
