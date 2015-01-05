@@ -22,6 +22,7 @@ import agent_packager.codes as codes
 from agent_packager.logger import init
 from requests import ConnectionError
 
+import imp
 from contextlib import closing
 from testfixtures import LogCapture
 import logging
@@ -41,6 +42,7 @@ TEST_VENV = os.path.join(BASE_DIR, 'env')
 TEST_MODULE = 'xmltodict'
 TEST_FILE = 'https://github.com/cloudify-cosmo/cloudify-agent-packager/archive/master.tar.gz'  # NOQA
 MANAGER = 'https://github.com/cloudify-cosmo/cloudify-manager/archive/master.tar.gz'  # NOQA
+MOCK_MODULE = os.path.join(TEST_RESOURCES_DIR, 'mock-module')
 
 
 def venv(func):
@@ -261,3 +263,11 @@ class TestCreate(testtools.TestCase):
             SystemExit, ap.create, None, CONFIG_FILE, verbose=True)
         self.assertEqual(e.message, codes.mapping['tar_already_exists'])
         os.remove(config['output_tar'])
+
+    @venv
+    def test_generate_includes_file(self):
+        utils.install_module(MOCK_MODULE, TEST_VENV)
+        modules = {'plugins': ['cloudify-fabric-plugin']}
+        includes_file = ap._generate_includes_file(modules, TEST_VENV)
+        includes = imp.load_source('includes_file', includes_file)
+        self.assertIn('cloudify-fabric-plugin', includes.included_plugins)

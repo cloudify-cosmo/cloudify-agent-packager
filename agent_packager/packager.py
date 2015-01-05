@@ -282,7 +282,7 @@ def get_module_name(module):
     return module.replace('_', '-')
 
 
-def _update_includes_file(modules, venv):
+def _generate_includes_file(modules, venv):
 
     lgr.debug('generating includes file')
 
@@ -299,6 +299,7 @@ def _update_includes_file(modules, venv):
         make_file=True
     )
     i.generate()
+    return output_file
 
 
 def create(config=None, config_file=None, force=False, dryrun=False,
@@ -386,7 +387,7 @@ def create(config=None, config_file=None, force=False, dryrun=False,
     if not no_validate:
         _validate(final_set, venv)
     # generate the includes file
-    _update_includes_file(final_set, venv)
+    _generate_includes_file(final_set, venv)
     # create agent tar
     utils.tar(venv, destination_tar)
 
