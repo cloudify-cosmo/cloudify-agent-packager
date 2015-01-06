@@ -72,11 +72,8 @@ def _import_config(config_file=DEFAULT_CONFIG_FILE):
 
     :param string config_file: path to config file
     """
-    # get config file path
-    lgr.debug('Config file is: {0}'.format(config_file))
-    # append to path for importing
+    lgr.debug('Importing config: {0}...'.format(config_file))
     try:
-        lgr.debug('Importing config...')
         with open(config_file, 'r') as c:
             return yaml.safe_load(c.read())
     except IOError as ex:
@@ -90,6 +87,17 @@ def _import_config(config_file=DEFAULT_CONFIG_FILE):
 
 
 def _make_venv(venv, python, force):
+    """handles the virtualenv
+
+    removes the virtualenv if required, else, notifies
+    that it already exists. If it doesn't exist, it will be
+    created.
+
+    :param string venv: path of virtualenv to install in.
+    :param string python: python binary path to use.
+    :param bool force: whether to force creation or not if it
+     already exists.
+    """
     if os.path.isdir(venv):
         if force:
             lgr.info('Removing previous virtualenv...')
@@ -105,6 +113,15 @@ def _make_venv(venv, python, force):
 
 
 def _handle_output_file(destination_tar, force):
+    """handles the output tar
+
+    removes the output file if required, else, notifies
+    that it already exists.
+
+    :param string destination_tar: destination tar path
+    :param bool force: whether to force creation or not if
+     it already exists.
+    """
     if os.path.isfile(destination_tar) and force:
         lgr.info('Removing previous agent package...')
         os.remove(destination_tar)
@@ -115,6 +132,8 @@ def _handle_output_file(destination_tar, force):
 
 
 def _set_defaults():
+    """sets the default modules dictionary
+    """
     lgr.debug('Retrieving modules to install...')
     modules = {}
     modules['core_modules'] = {}
@@ -167,7 +186,6 @@ def _validate(modules, venv):
     lgr.info('Validating installation...')
     modules = modules['plugins'] + modules['modules']
     for module_name in modules:
-        # module_name = get_module_name(module)
         lgr.info('Validating that {0} is installed.'.format(module_name))
         if not utils.check_installed(module_name, venv):
             lgr.error('It appears that {0} does not exist in {1}'.format(
@@ -181,7 +199,6 @@ def _validate(modules, venv):
 
 
 class ModuleInstaller():
-
     def __init__(self, modules, venv, final_set):
         self.venv = venv
         self.modules = modules
@@ -193,6 +210,7 @@ class ModuleInstaller():
             utils.install_module(module, self.venv)
 
     def install_core_modules(self):
+        lgr.info('Installing core modules...')
         core = self.modules['core_modules']
         # we must run through the CORE_MODULES_LIST so that dependencies are
         # installed in order
@@ -212,6 +230,7 @@ class ModuleInstaller():
                          'cloudify-agent (if applicable).'.format(module_name))
 
     def install_core_plugins(self):
+        lgr.info('Installing core plugins...')
         core = self.modules['core_plugins']
 
         for module in CORE_PLUGINS_LIST:
@@ -230,6 +249,7 @@ class ModuleInstaller():
                          'cloudify-agent (if applicable).'.format(module_name))
 
     def install_additional_plugins(self):
+        lgr.info('Installing additional plugins...')
         additional = self.modules['additional_plugins']
 
         for module, source in additional.items():
@@ -252,23 +272,31 @@ def _install(modules, venv, final_set):
     :param dict modules: dict containing core and additional
     modules and the cloudify-agent module.
     :param string venv: path of virtualenv to install in.
+    :param dict final_set: dict to populate with modules.
     """
     installer = ModuleInstaller(modules, venv, final_set)
     lgr.info('Installing external modules...')
     installer.install_modules(EXTERNAL_MODULES)
-    lgr.info('Installing core modules...')
     installer.install_core_modules()
-    lgr.info('Installing core plugins...')
     installer.install_core_plugins()
     lgr.info('Installing additional modules...')
     installer.install_modules(modules['additional_modules'])
-    lgr.info('Installing additional plugins...')
     installer.install_additional_plugins()
     installer.install_agent()
     return installer.final_set
 
 
 def _uninstall_excluded(modules, venv):
+    """Uninstalls excluded modules.
+
+    Since there is no way to exclude requirements from a module;
+    and modules are installed from cloudify-agent's requirements;
+    if any modules are chosen to be excluded, they will be uninstalled.
+
+    :param dict modules: dict containing core and additional
+    modules and the cloudify-agent module.
+    :param string venv: path of virtualenv to install in.
+    """
     lgr.info('Uninstalling excluded plugins (if any)...')
     for module in CORE_PLUGINS_LIST:
         module_name = get_module_name(module)
@@ -279,11 +307,18 @@ def _uninstall_excluded(modules, venv):
 
 
 def get_module_name(module):
+    """returns a module's name
+    """
     return module.replace('_', '-')
 
 
 def _generate_includes_file(modules, venv):
+    """generates the included_plugins file for `cloudify-agent` to use
 
+    :param dict modules: dict containing a list of modules and a list
+     of plugins. The plugins list will be used to populate the file.
+    :param string venv: path of virtualenv to install in.
+    """
     lgr.debug('Generating includes file')
 
     process = utils.run('{0}/bin/python -c "import cloudify_agent;'
@@ -400,7 +435,3 @@ def create(config=None, config_file=None, force=False, dryrun=False,
         shutil.rmtree(venv)
     # duh!
     lgr.info('Process complete!')
-
-
-class PackagerError(Exception):
-    pass
