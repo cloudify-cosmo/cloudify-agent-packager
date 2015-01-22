@@ -15,7 +15,7 @@ DEFAULT_OUTPUT_TAR_PATH = '{0}-{1}-agent.tar.gz'
 DEFAULT_VENV_PATH = 'cloudify/{0}-{1}-agent/env'
 
 EXTERNAL_MODULES = [
-    'celery==3.0.24'
+    'celery==3.1.17'
 ]
 
 BASE_MODULES = {

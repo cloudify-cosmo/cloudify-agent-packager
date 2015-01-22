@@ -46,7 +46,7 @@ cd /cloudify-packager/ &&
 sudo pkm get -c Ubuntu-agent
 
 echo '# GET PROCESS'
-sudo /Ubuntu-agent/env/bin/pip install celery==3.0.24
+sudo /Ubuntu-agent/env/bin/pip install celery==3.1.17
 sudo /Ubuntu-agent/env/bin/pip install pyzmq==14.3.1
 git clone https://github.com/cloudify-cosmo/cloudify-rest-client.git
 pushd cloudify-rest-client
