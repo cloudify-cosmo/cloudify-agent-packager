@@ -12,4 +12,5 @@ mapping = {
     'installation_validation_failed': 10,
     'could_not_access_config_file': 11,
     'invalid_yaml_file': 12,
+    'could_not_install_from_requirements_file': 13,
 }

@@ -56,6 +56,20 @@ def install_module(module, venv):
         sys.exit(codes.mapping['could_not_install_module'])
 
 
+def install_requirements_file(path, venv):
+    """installs modules from a requirements file in a virtualenv
+
+    :param string path: path to requirements file1
+    :param string venv: path of virtualenv to install in
+    """
+    lgr.debug('Installing {0} in venv {1}'.format(path, venv))
+    pip_cmd = '{1}/bin/pip install -r{0}'.format(path, venv)
+    p = run(pip_cmd)
+    if not p.returncode == 0:
+        lgr.error('Could not install from requirements file: {0}'.format(path))
+        sys.exit(codes.mapping['could_not_install_from_requirements_file'])
+
+
 def uninstall_module(module, venv):
     """uninstalls a module from a virtualenv
 

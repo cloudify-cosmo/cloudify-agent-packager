@@ -152,6 +152,10 @@ def _merge_modules(modules, config):
     :param dict config: dict containing the config.
     """
     lgr.debug('Merging default modules with config...')
+
+    if 'requirements_file' in config:
+        modules['requirements_file'] = config['requirements_file']
+
     modules['core_modules'].update(config.get('core_modules', {}))
     modules['core_plugins'].update(config.get('core_plugins', {}))
 
@@ -203,6 +207,11 @@ class ModuleInstaller():
         self.venv = venv
         self.modules = modules
         self.final_set = final_set
+
+    def install_requirements_file(self):
+        if 'requirements_file' in self.modules:
+            utils.install_requirements_file(
+                self.modules['requirements_file'], self.venv)
 
     def install_modules(self, modules):
         for module in modules:
@@ -275,6 +284,8 @@ def _install(modules, venv, final_set):
     :param dict final_set: dict to populate with modules.
     """
     installer = ModuleInstaller(modules, venv, final_set)
+    lgr.info('Installing module from requirements file...')
+    installer.install_requirements_file()
     lgr.info('Installing external modules...')
     installer.install_modules(EXTERNAL_MODULES)
     installer.install_core_modules()
@@ -310,6 +321,15 @@ def get_module_name(module):
     """returns a module's name
     """
     return module.replace('_', '-')
+
+
+def get_os_props():
+    """returns a tuple of the distro and release
+    """
+    data = platform.dist()
+    distro = data[0]
+    release = data[2]
+    return distro, release
 
 
 def _generate_includes_file(modules, venv):
@@ -381,8 +401,9 @@ def create(config=None, config_file=None, force=False, dryrun=False,
             _import_config()
         config = {} if not config else config
     try:
-        distro = config.get('distribution', platform.dist()[0])
-        release = config.get('release', platform.dist()[2])
+        (distro, release) = get_os_props()
+        distro = config.get('distribution', distro)
+        release = config.get('release', release)
     except Exception as ex:
         lgr.error(
             'Distribution not found in configuration '

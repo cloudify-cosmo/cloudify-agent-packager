@@ -200,7 +200,8 @@ class TestCreate(testtools.TestCase):
             'cloudify-rest-client',
             'cloudify-fabric-plugin',
             'cloudify-agent',
-            'pyyaml'
+            'pyyaml',
+            'xmltodict'
         ]
         excluded_modules = [
             'cloudify-diamond-plugin',
