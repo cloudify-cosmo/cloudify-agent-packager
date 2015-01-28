@@ -6,10 +6,10 @@ requirements_file: 'agent_packager/tests/resources/requirements.txt'
 cloudify_agent_module: https://github.com/nir0s/cloudify-agent/archive/master.tar.gz
 core_modules:
     cloudify_plugins_common: https://github.com/cloudify-cosmo/cloudify-plugins-common/archive/3.1.tar.gz
-    cloudify_rest_client: false
+    # cloudify_rest_client: https://github.com/cloudify-cosmo/cloudify-rest-client/archive/3.1.tar.gz
 core_plugins:
     cloudify_script_plugin: exclude
-    cloudify_diamond_plugin: false
+    # cloudify_diamond_plugin: https://github.com/cloudify-cosmo/cloudify-diamond-plugin/archive/3.1.tar.gz
     # cloudify_agent_installer_plugin: https://github.com/iliapolo/cloudify-agent-installer-plugin/archive/master.tar.gz
     # cloudify_plugin_installer_plugin: https://github.com/iliapolo/cloudify-plugin-installer-plugin/archive/master.tar.gz
     # cloudify_windows_agent_installer_plugin: https://github.com/iliapolo/cloudify-windows-agent-installer-plugin/archive/master.tar.gz

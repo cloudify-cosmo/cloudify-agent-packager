@@ -225,16 +225,16 @@ class ModuleInstaller():
         # installed in order
         for module in CORE_MODULES_LIST:
             module_name = get_module_name(module)
-            if core.get(module):
+            if module in core:
                 lgr.info('Installing module {0} from {1}.'.format(
                     module_name, core[module]))
                 utils.install_module(core[module], self.venv)
                 self.final_set['modules'].append(module_name)
-            elif not core.get(module) and module in MANDATORY_MODULES:
+            elif module not in core and module in MANDATORY_MODULES:
                 lgr.info('Module {0} will be installed as a part of '
                          'cloudify-agent (This is a mandatory module).'.format(
                              module_name))
-            elif not core.get(module):
+            elif module not in core:
                 lgr.info('Module {0} will be installed as a part of '
                          'cloudify-agent (if applicable).'.format(module_name))
 
@@ -244,7 +244,7 @@ class ModuleInstaller():
 
         for module in CORE_PLUGINS_LIST:
             module_name = get_module_name(module)
-            if core.get(module) and core[module] == 'exclude':
+            if module in core and core[module] == 'exclude':
                 lgr.info('Module {0} is excluded. '
                          'it will not be a part of the agent.'.format(
                              module_name))
@@ -253,7 +253,7 @@ class ModuleInstaller():
                     module_name, core[module]))
                 utils.install_module(core[module], self.venv)
                 self.final_set['plugins'].append(module_name)
-            elif not core.get(module):
+            elif module not in core:
                 lgr.info('Module {0} will be installed as a part of '
                          'cloudify-agent (if applicable).'.format(module_name))
 
