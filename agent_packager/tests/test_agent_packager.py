@@ -209,19 +209,21 @@ class TestCreate(testtools.TestCase):
         ]
         config = ap._import_config(CONFIG_FILE)
         cli._run(cli_options)
-        if os.path.isdir(config['venv']):
-            shutil.rmtree(config['venv'])
-        os.makedirs(config['venv'])
+        venv = os.path.join(config['virtualenv_base_dir'], 'env')
+        if os.path.isdir(venv):
+            shutil.rmtree(venv)
+        os.makedirs(venv)
         utils.run('tar -xzvf {0} -C {1} --strip-components=2'.format(
             config['output_tar'], BASE_DIR))
         os.remove(config['output_tar'])
-        self.assertTrue(os.path.isdir(config['venv']))
-        pip_freeze_output = utils.get_installed(config['venv']).lower()
+        self.assertTrue(os.path.isdir(venv))
+        pip_freeze_output = utils.get_installed(
+            venv).lower()
         for required_module in required_modules:
             self.assertIn(required_module, pip_freeze_output)
         for excluded_module in excluded_modules:
             self.assertNotIn(excluded_module, pip_freeze_output)
-        shutil.rmtree(config['venv'])
+        shutil.rmtree(venv)
 
     def test_dryrun(self):
         cli_options = {
@@ -257,7 +259,7 @@ class TestCreate(testtools.TestCase):
     @venv
     def test_create_agent_package_tar_already_exists(self):
         config = ap._import_config(CONFIG_FILE)
-        shutil.rmtree(config['venv'])
+        shutil.rmtree(config['virtualenv_base_dir'])
         with open(config['output_tar'], 'w') as a:
             a.write('CONTENT')
         e = self.assertRaises(

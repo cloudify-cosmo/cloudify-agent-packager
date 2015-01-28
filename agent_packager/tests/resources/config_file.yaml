@@ -1,6 +1,6 @@
 distribution: Ubuntu
 release: trusty
-venv: 'cloudify/test_venv/env'
+virtualenv_base_dir: 'cloudify/test_venv'
 python_path: '/usr/bin/python'
 requirements_file: 'agent_packager/tests/resources/requirements.txt'
 # cloudify_agent_version: 3.1
@@ -20,4 +20,4 @@ additional_modules:
 additional_plugins:
     cloudify-fabric-plugin: https://github.com/cloudify-cosmo/cloudify-fabric-plugin/archive/1.1.tar.gz
 output_tar: Ubuntu-trusty-agent.tar.gz
-keep_venv: true
+keep_virtualenv: true

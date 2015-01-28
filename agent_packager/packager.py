@@ -412,14 +412,16 @@ def create(config=None, config_file=None, force=False, dryrun=False,
             '({0})'.format(ex.message))
         sys.exit(codes.mapping['could_not_identify_distribution'])
     python = config.get('python_path', '/usr/bin/python')
-    venv = config.get('venv', DEFAULT_VENV_PATH.format(distro, release))
+    venv = os.path.join(config.get(
+        'virtualenv_base_dir', DEFAULT_VENV_PATH.format(
+            distro, release)), 'env')
     destination_tar = config.get(
         'output_tar', DEFAULT_OUTPUT_TAR_PATH.format(distro, release))
 
     lgr.debug('Distibution is: {0}'.format(distro))
     lgr.debug('Distribution release is: {0}'.format(release))
     lgr.debug('Python path is: {0}'.format(python))
-    lgr.debug('venv is: {0}'.format(venv))
+    lgr.debug('Virtualenv is: {0}'.format(venv))
     lgr.debug('Destination tarfile is: {0}'.format(destination_tar))
     # create virtualenv
     _make_venv(venv, python, force)
