@@ -14,7 +14,7 @@ from jingen.jingen import Jingen
 
 DEFAULT_CONFIG_FILE = 'config.yaml'
 DEFAULT_OUTPUT_TAR_PATH = '{0}-{1}-agent.tar.gz'
-DEFAULT_VENV_PATH = 'cloudify/{0}-{1}-agent/env'
+DEFAULT_VENV_PATH = 'cloudify/env'
 
 INCLUDES_FILE = 'included_plugins.py'
 TEMPLATE_FILE = 'included_plugins.py.j2'
@@ -412,16 +412,13 @@ def create(config=None, config_file=None, force=False, dryrun=False,
             '({0})'.format(ex.message))
         sys.exit(codes.mapping['could_not_identify_distribution'])
     python = config.get('python_path', '/usr/bin/python')
-    venv = os.path.join(config.get(
-        'virtualenv_base_dir', DEFAULT_VENV_PATH.format(
-            distro, release)), 'env')
+    venv = DEFAULT_VENV_PATH
     destination_tar = config.get(
         'output_tar', DEFAULT_OUTPUT_TAR_PATH.format(distro, release))
 
     lgr.debug('Distibution is: {0}'.format(distro))
     lgr.debug('Distribution release is: {0}'.format(release))
     lgr.debug('Python path is: {0}'.format(python))
-    lgr.debug('Virtualenv is: {0}'.format(venv))
     lgr.debug('Destination tarfile is: {0}'.format(destination_tar))
     # create virtualenv
     _make_venv(venv, python, force)

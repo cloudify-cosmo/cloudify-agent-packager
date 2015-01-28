@@ -37,7 +37,7 @@ TEST_RESOURCES_DIR = 'agent_packager/tests/resources/'
 CONFIG_FILE = os.path.join(TEST_RESOURCES_DIR, 'config_file.yaml')
 BAD_CONFIG_FILE = os.path.join(TEST_RESOURCES_DIR, 'bad_config_file.yaml')
 EMPTY_CONFIG_FILE = os.path.join(TEST_RESOURCES_DIR, 'empty_config_file.yaml')
-BASE_DIR = 'cloudify/test_venv'
+BASE_DIR = 'cloudify'
 TEST_VENV = os.path.join(BASE_DIR, 'env')
 TEST_MODULE = 'xmltodict'
 TEST_FILE = 'https://github.com/cloudify-cosmo/cloudify-agent-packager/archive/master.tar.gz'  # NOQA
@@ -209,21 +209,20 @@ class TestCreate(testtools.TestCase):
         ]
         config = ap._import_config(CONFIG_FILE)
         cli._run(cli_options)
-        venv = os.path.join(config['virtualenv_base_dir'], 'env')
-        if os.path.isdir(venv):
-            shutil.rmtree(venv)
-        os.makedirs(venv)
-        utils.run('tar -xzvf {0} -C {1} --strip-components=2'.format(
+        if os.path.isdir(TEST_VENV):
+            shutil.rmtree(TEST_VENV)
+        os.makedirs(TEST_VENV)
+        utils.run('tar -xzvf {0} -C {1} --strip-components=1'.format(
             config['output_tar'], BASE_DIR))
         os.remove(config['output_tar'])
-        self.assertTrue(os.path.isdir(venv))
+        self.assertTrue(os.path.isdir(TEST_VENV))
         pip_freeze_output = utils.get_installed(
-            venv).lower()
+            TEST_VENV).lower()
         for required_module in required_modules:
             self.assertIn(required_module, pip_freeze_output)
         for excluded_module in excluded_modules:
             self.assertNotIn(excluded_module, pip_freeze_output)
-        shutil.rmtree(venv)
+        shutil.rmtree(TEST_VENV)
 
     def test_dryrun(self):
         cli_options = {
@@ -259,7 +258,7 @@ class TestCreate(testtools.TestCase):
     @venv
     def test_create_agent_package_tar_already_exists(self):
         config = ap._import_config(CONFIG_FILE)
-        shutil.rmtree(config['virtualenv_base_dir'])
+        shutil.rmtree(TEST_VENV)
         with open(config['output_tar'], 'w') as a:
             a.write('CONTENT')
         e = self.assertRaises(
