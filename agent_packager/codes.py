@@ -1,5 +1,8 @@
-mapping = {
+notifications = {
     'dryrun_complete': 0,
+}
+
+errors = {
     'could_not_create_virtualenv': 1,
     'virtualenv_already_exists': 2,
     'could_not_download_file': 3,

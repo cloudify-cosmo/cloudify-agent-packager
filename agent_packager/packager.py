@@ -79,11 +79,11 @@ def _import_config(config_file=DEFAULT_CONFIG_FILE):
     except IOError as ex:
         lgr.error(str(ex))
         lgr.error('Cannot access config file')
-        sys.exit(codes.mapping['could_not_access_config_file'])
+        sys.exit(codes.errors['could_not_access_config_file'])
     except (yaml.parser.ParserError, yaml.scanner.ScannerError) as ex:
         lgr.error(str(ex))
         lgr.error('Invalid yaml file')
-        sys.exit(codes.mapping['invalid_yaml_file'])
+        sys.exit(codes.errors['invalid_yaml_file'])
 
 
 def _make_venv(venv, python, force):
@@ -106,7 +106,7 @@ def _make_venv(venv, python, force):
             lgr.error('Virtualenv already exists at {0}. '
                       'You can use the -f flag or delete the '
                       'previous env.'.format(venv))
-            sys.exit(codes.mapping['virtualenv_already_exists'])
+            sys.exit(codes.errors['virtualenv_already_exists'])
 
     lgr.info('Creating virtualenv: {0}'.format(venv))
     utils.make_virtualenv(venv, python)
@@ -128,7 +128,7 @@ def _handle_output_file(destination_tar, force):
     if os.path.exists(destination_tar):
             lgr.error('Destination tar already exists: {0}'.format(
                 destination_tar))
-            sys.exit(codes.mapping['tar_already_exists'])
+            sys.exit(codes.errors['tar_already_exists'])
 
 
 def _set_defaults():
@@ -172,7 +172,7 @@ def _merge_modules(modules, config):
     else:
         lgr.error('Either `cloudify_agent_module` or `cloudify_agent_version` '
                   'must be specified in the yaml configuration file.')
-        sys.exit(codes.mapping['missing_cloudify_agent_config'])
+        sys.exit(codes.errors['missing_cloudify_agent_config'])
     return modules
 
 
@@ -199,7 +199,7 @@ def _validate(modules, venv):
     if failed:
         lgr.error('Validation failed. some of the requested modules were not '
                   'installed.')
-        sys.exit(codes.mapping['installation_validation_failed'])
+        sys.exit(codes.errors['installation_validation_failed'])
 
 
 class ModuleInstaller():
@@ -410,7 +410,7 @@ def create(config=None, config_file=None, force=False, dryrun=False,
             'and could not be retrieved automatically. '
             'please specify the distribution in the yaml. '
             '({0})'.format(ex.message))
-        sys.exit(codes.mapping['could_not_identify_distribution'])
+        sys.exit(codes.errors['could_not_identify_distribution'])
     python = config.get('python_path', '/usr/bin/python')
     venv = DEFAULT_VENV_PATH
     destination_tar = config.get(
@@ -434,7 +434,7 @@ def create(config=None, config_file=None, force=False, dryrun=False,
         modules, sort_keys=True, indent=4, separators=(',', ': '))))
     if dryrun:
         lgr.info('Dryrun complete')
-        sys.exit(codes.mapping['dryrun_complete'])
+        sys.exit(codes.notifications['dryrun_complete'])
     # install all required modules
     final_set = _install(modules, venv, final_set)
     # uninstall excluded modules

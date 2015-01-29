@@ -80,11 +80,11 @@ class TestUtils(testtools.TestCase):
     def test_fail_import_config_file(self):
         e = self.assertRaises(SystemExit, ap._import_config, '')
         self.assertEqual(
-            codes.mapping['could_not_access_config_file'], e.message)
+            codes.errors['could_not_access_config_file'], e.message)
 
     def test_import_bad_config_file_mapping(self):
         e = self.assertRaises(SystemExit, ap._import_config, BAD_CONFIG_FILE)
-        self.assertEqual(codes.mapping['invalid_yaml_file'], e.message)
+        self.assertEqual(codes.errors['invalid_yaml_file'], e.message)
 
     def test_run(self):
         p = utils.run('uname')
@@ -103,14 +103,14 @@ class TestUtils(testtools.TestCase):
         e = self.assertRaises(
             SystemExit, utils.make_virtualenv, '/' + TEST_VENV)
         self.assertEqual(
-            codes.mapping['could_not_create_virtualenv'], e.message)
+            codes.errors['could_not_create_virtualenv'], e.message)
 
     def test_fail_create_virtualenv_missing_python(self):
         e = self.assertRaises(
             SystemExit, utils.make_virtualenv, TEST_VENV,
             '/usr/bin/missing_python')
         self.assertEqual(
-            codes.mapping['could_not_create_virtualenv'], e.message)
+            codes.errors['could_not_create_virtualenv'], e.message)
 
     @venv
     def test_install_module(self):
@@ -122,12 +122,12 @@ class TestUtils(testtools.TestCase):
     def test_install_nonexisting_module(self):
         e = self.assertRaises(
             SystemExit, utils.install_module, 'BLAH!!', TEST_VENV)
-        self.assertEqual(codes.mapping['could_not_install_module'], e.message)
+        self.assertEqual(codes.errors['could_not_install_module'], e.message)
 
     def test_install_module_nonexisting_venv(self):
         e = self.assertRaises(
             SystemExit, utils.install_module, TEST_MODULE, 'BLAH!!')
-        self.assertEqual(codes.mapping['could_not_install_module'], e.message)
+        self.assertEqual(codes.errors['could_not_install_module'], e.message)
 
     def test_download_file(self):
         utils.download_file(TEST_FILE, 'file')
@@ -140,7 +140,7 @@ class TestUtils(testtools.TestCase):
             SystemExit, utils.download_file,
             'http://www.google.com/x.tar.gz', 'file')
         self.assertEqual(
-            codes.mapping['could_not_download_file'], e.message)
+            codes.errors['could_not_download_file'], e.message)
 
     def test_download_bad_url(self):
         e = self.assertRaises(
@@ -176,12 +176,12 @@ class TestUtils(testtools.TestCase):
     @venv
     def test_tar_no_permissions(self):
         e = self.assertRaises(SystemExit, utils.tar, TEST_VENV, '/file')
-        self.assertEqual(e.message, codes.mapping['failed_to_create_tar'])
+        self.assertEqual(e.message, codes.errors['failed_to_create_tar'])
 
     @venv
     def test_tar_missing_source(self):
         e = self.assertRaises(SystemExit, utils.tar, 'missing', 'file')
-        self.assertEqual(e.message, codes.mapping['failed_to_create_tar'])
+        self.assertEqual(e.message, codes.errors['failed_to_create_tar'])
         os.remove('file')
 
 
@@ -237,7 +237,7 @@ class TestCreate(testtools.TestCase):
             l.check(('user', 'INFO', 'Creating virtualenv: {0}'.format(
                 TEST_VENV)),
                 ('user', 'INFO', 'Dryrun complete'))
-        self.assertEqual(codes.mapping['dryrun_complete'], e.message)
+        self.assertEqual(codes.notifications['dryrun_complete'], e.message)
 
     @venv
     def test_create_agent_package_no_cloudify_agent_configured(self):
@@ -247,13 +247,13 @@ class TestCreate(testtools.TestCase):
         e = self.assertRaises(
             SystemExit, ap.create, config, None, force=True, verbose=True)
         self.assertEqual(
-            e.message, codes.mapping['missing_cloudify_agent_config'])
+            e.message, codes.errors['missing_cloudify_agent_config'])
 
     @venv
     def test_create_agent_package_existing_venv_no_force(self):
         e = self.assertRaises(
             SystemExit, ap.create, None, CONFIG_FILE, verbose=True)
-        self.assertEqual(e.message, codes.mapping['virtualenv_already_exists'])
+        self.assertEqual(e.message, codes.errors['virtualenv_already_exists'])
 
     @venv
     def test_create_agent_package_tar_already_exists(self):
@@ -263,7 +263,7 @@ class TestCreate(testtools.TestCase):
             a.write('CONTENT')
         e = self.assertRaises(
             SystemExit, ap.create, None, CONFIG_FILE, verbose=True)
-        self.assertEqual(e.message, codes.mapping['tar_already_exists'])
+        self.assertEqual(e.message, codes.errors['tar_already_exists'])
         os.remove(config['output_tar'])
 
     @venv
