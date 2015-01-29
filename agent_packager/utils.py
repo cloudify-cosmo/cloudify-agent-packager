@@ -36,7 +36,7 @@ def make_virtualenv(virtualenv_dir, python='/usr/bin/python'):
     p = run('virtualenv -p {0} {1}'.format(python, virtualenv_dir))
     if not p.returncode == 0:
         lgr.error('Could not create venv: {0}'.format(virtualenv_dir))
-        sys.exit(codes.mapping['could_not_create_virtualenv'])
+        sys.exit(codes.errors['could_not_create_virtualenv'])
 
 
 def install_module(module, venv):
@@ -53,7 +53,7 @@ def install_module(module, venv):
     p = run(pip_cmd)
     if not p.returncode == 0:
         lgr.error('Could not install module: {0}'.format(module))
-        sys.exit(codes.mapping['could_not_install_module'])
+        sys.exit(codes.errors['could_not_install_module'])
 
 
 def install_requirements_file(path, venv):
@@ -67,7 +67,7 @@ def install_requirements_file(path, venv):
     p = run(pip_cmd)
     if not p.returncode == 0:
         lgr.error('Could not install from requirements file: {0}'.format(path))
-        sys.exit(codes.mapping['could_not_install_from_requirements_file'])
+        sys.exit(codes.errors['could_not_install_from_requirements_file'])
 
 
 def uninstall_module(module, venv):
@@ -81,7 +81,7 @@ def uninstall_module(module, venv):
     p = run(pip_cmd)
     if not p.returncode == 0:
         lgr.error('Could not uninstall module: {0}'.format(module))
-        sys.exit(codes.mapping['could_not_uninstall_module'])
+        sys.exit(codes.errors['could_not_uninstall_module'])
 
 
 def get_installed(venv):
@@ -111,7 +111,7 @@ def download_file(url, destination):
     r = requests.get(url, stream=True)
     if not r.status_code == 200:
         lgr.error('Could not download file: {0}'.format(url))
-        sys.exit(codes.mapping['could_not_download_file'])
+        sys.exit(codes.errors['could_not_download_file'])
     with open(destination, 'wb') as f:
         for chunk in r.iter_content(chunk_size=1024):
             if chunk:  # filter out keep-alive new chunks
@@ -130,4 +130,4 @@ def tar(source, destination):
     r = run('tar czvf {0} {1}'.format(destination, source), no_print=True)
     if not r.returncode == 0:
         lgr.error('Failed to create tar file.')
-        sys.exit(codes.mapping['failed_to_create_tar'])
+        sys.exit(codes.errors['failed_to_create_tar'])
