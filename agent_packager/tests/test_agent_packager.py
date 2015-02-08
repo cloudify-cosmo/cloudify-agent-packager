@@ -13,8 +13,6 @@
 #    * See the License for the specific language governing permissions and
 #    * limitations under the License.
 
-__author__ = 'nir0s'
-
 import agent_packager.packager as ap
 import agent_packager.utils as utils
 from agent_packager.logger import init
