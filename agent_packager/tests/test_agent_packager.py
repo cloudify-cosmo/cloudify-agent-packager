@@ -43,11 +43,17 @@ TEST_MODULE = 'xmltodict'
 TEST_FILE = 'https://github.com/cloudify-cosmo/cloudify-agent-packager/archive/master.tar.gz'  # NOQA
 MANAGER = 'https://github.com/cloudify-cosmo/cloudify-manager/archive/master.tar.gz'  # NOQA
 MOCK_MODULE = os.path.join(TEST_RESOURCES_DIR, 'mock-module')
+MOCK_MODULE_NO_INCLUDES_FILE = os.path.join(
+    TEST_RESOURCES_DIR, 'mock-module-no-includes')
 
 
 def venv(func):
     @wraps(func)
     def execution_handler(*args, **kwargs):
+        try:
+            shutil.rmtree(TEST_VENV)
+        except:
+            pass
         utils.make_virtualenv(TEST_VENV)
         func(*args, **kwargs)
         shutil.rmtree(TEST_VENV)
@@ -269,6 +275,15 @@ class TestCreate(testtools.TestCase):
     @venv
     def test_generate_includes_file(self):
         utils.install_module(MOCK_MODULE, TEST_VENV)
+        modules = {'plugins': ['cloudify-fabric-plugin']}
+        includes_file = ap._generate_includes_file(modules, TEST_VENV)
+        includes = imp.load_source('includes_file', includes_file)
+        self.assertIn('cloudify-fabric-plugin', includes.included_plugins)
+        self.assertIn('cloudify-puppet-plugin', includes.included_plugins)
+
+    @venv
+    def test_generate_includes_file_no_previous_includes_file_provided(self):
+        utils.install_module(MOCK_MODULE_NO_INCLUDES_FILE, TEST_VENV)
         modules = {'plugins': ['cloudify-fabric-plugin']}
         includes_file = ap._generate_includes_file(modules, TEST_VENV)
         includes = imp.load_source('includes_file', includes_file)

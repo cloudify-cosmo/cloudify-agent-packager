@@ -6,6 +6,7 @@ import platform
 import shutil
 import os
 import sys
+import imp
 
 import utils
 import codes
@@ -346,6 +347,18 @@ def _generate_includes_file(modules, venv):
     cloudify_agent_module_path = os.path.dirname(process.stdout)
     output_file = os.path.join(
         cloudify_agent_module_path, INCLUDES_FILE)
+
+    try:
+        previous_included = imp.load_source('included_plugins', os.path.join(
+            cloudify_agent_module_path, INCLUDES_FILE))
+        plugins_list = previous_included.included_plugins
+        for plugin in plugins_list:
+            if plugin not in modules['plugins']:
+                modules['plugins'].append(plugin)
+    except IOError:
+        lgr.debug('Included Plugins file could not be found in agent '
+                  'module. A new file will be generated.')
+
     lgr.debug('Writing includes file to: {0}'.format(output_file))
     i = Jingen(
         template_file=TEMPLATE_FILE,
