@@ -210,7 +210,7 @@ def create(config=None, config_file=None, force=False, verbose=True):
         utils.install_module(base['plugins_common'], venv)
     if base.get('script_plugin'):
         utils.install_module(base['script_plugin'], venv)
-    if base.get(bool('diamond_plugin')):
+    if base.get('diamond_plugin'):
         utils.install_module(base['diamond_plugin'], venv)
 
     # install management
