@@ -6,7 +6,7 @@ base_modules:
     plugins_common: https://github.com/cloudify-cosmo/cloudify-plugins-common/archive/3.1m4.tar.gz
     rest_client: https://github.com/cloudify-cosmo/cloudify-rest-client/archive/3.1m4.tar.gz
     script_plugin: https://github.com/cloudify-cosmo/cloudify-script-plugin/archive/1.1m4.tar.gz
-    diamond_plugin: none
+    diamond_plugin: https://github.com/cloudify-cosmo/cloudify-diamond-plugin/archive/1.1m4.tar.gz
 management_modules_version: 3.1m4
 output_tar: Ubuntu-trusty-agent.tar.gz
 keep_venv: false

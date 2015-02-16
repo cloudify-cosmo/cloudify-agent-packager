@@ -205,7 +205,7 @@ class TestBase(testtools.TestCase):
         self.assertIn('cloudify-plugins-common', p.stdout)
         self.assertIn('cloudify-rest-client', p.stdout)
         self.assertIn('cloudify-script-plugin', p.stdout)
-        self.assertNotIn('cloudify-diamond-plugin', p.stdout)
+        self.assertIn('cloudify-diamond-plugin', p.stdout)
         shutil.rmtree(config['venv'])
 
     @venv
