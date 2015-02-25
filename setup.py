@@ -38,7 +38,7 @@ class Tox(TestCommand):
 
 setup(
     name='cloudify-agent-packager',
-    version='3.2a5',
+    version='3.2a6',
     url='https://github.com/cloudify-cosmo/cloudify-agent-packager',
     author='Gigaspaces',
     author_email='cosmo-admin@gigaspaces.com',
