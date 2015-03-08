@@ -22,7 +22,7 @@ TEMPLATE_FILE = 'included_plugins.py.j2'
 TEMPLATE_DIR = 'resources'
 
 EXTERNAL_MODULES = [
-    'celery==3.0.24'
+    'celery==3.1.17'
 ]
 
 CORE_MODULES_LIST = [
