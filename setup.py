@@ -56,7 +56,7 @@ setup(
     install_requires=[
         "docopt==.0.6.1",
         "pyyaml==3.10",
-        "virtualenv==1.11.4",
+        "virtualenv==12.0.7",
         "requests==2.4.1",
         "jingen==0.1.0"
     ],
