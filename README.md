@@ -7,4 +7,4 @@
 
 This tool allows users to create personalized Cloudify agent packages (For now, Linux Only!).
 
-See [Cloudify's Agent Packager](http://getcloudify.org/guide/3.1/agents-packager.html) for more information.
+See [Cloudify's Agent Packager](http://getcloudify.org/guide/agents-packager.html) for more information.
