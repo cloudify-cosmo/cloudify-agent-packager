@@ -56,7 +56,6 @@ verbose_output = False
 
 def set_global_verbosity_level(is_verbose_output=False):
     """sets the global verbosity level for console and the lgr logger.
-
     :param bool is_verbose_output: should be output be verbose
     """
     global verbose_output
@@ -70,7 +69,6 @@ def set_global_verbosity_level(is_verbose_output=False):
 
 def _import_config(config_file=DEFAULT_CONFIG_FILE):
     """returns a configuration object
-
     :param string config_file: path to config file
     """
     lgr.debug('Importing config: {0}...'.format(config_file))
@@ -89,11 +87,9 @@ def _import_config(config_file=DEFAULT_CONFIG_FILE):
 
 def _make_venv(venv, python, force):
     """handles the virtualenv
-
     removes the virtualenv if required, else, notifies
     that it already exists. If it doesn't exist, it will be
     created.
-
     :param string venv: path of virtualenv to install in.
     :param string python: python binary path to use.
     :param bool force: whether to force creation or not if it
@@ -115,10 +111,8 @@ def _make_venv(venv, python, force):
 
 def _handle_output_file(destination_tar, force):
     """handles the output tar
-
     removes the output file if required, else, notifies
     that it already exists.
-
     :param string destination_tar: destination tar path
     :param bool force: whether to force creation or not if
      it already exists.
@@ -147,7 +141,6 @@ def _set_defaults():
 
 def _merge_modules(modules, config):
     """merges the default modules with the modules from the config yaml
-
     :param dict modules: dict containing core and additional
     modules and the cloudify-agent module.
     :param dict config: dict containing the config.
@@ -180,7 +173,6 @@ def _merge_modules(modules, config):
 def _validate(modules, venv):
     """validates that all requested modules are actually installed
     within the virtualenv
-
     :param dict modules: dict containing core and additional
     modules and the cloudify-agent module.
     :param string venv: path of virtualenv to install in.
@@ -278,7 +270,6 @@ class ModuleInstaller():
 
 def _install(modules, venv, final_set):
     """installs all requested modules
-
     :param dict modules: dict containing core and additional
     modules and the cloudify-agent module.
     :param string venv: path of virtualenv to install in.
@@ -300,11 +291,9 @@ def _install(modules, venv, final_set):
 
 def _uninstall_excluded(modules, venv):
     """Uninstalls excluded modules.
-
     Since there is no way to exclude requirements from a module;
     and modules are installed from cloudify-agent's requirements;
     if any modules are chosen to be excluded, they will be uninstalled.
-
     :param dict modules: dict containing core and additional
     modules and the cloudify-agent module.
     :param string venv: path of virtualenv to install in.
@@ -335,7 +324,6 @@ def get_os_props():
 
 def _generate_includes_file(modules, venv):
     """generates the included_plugins file for `cloudify-agent` to use
-
     :param dict modules: dict containing a list of modules and a list
      of plugins. The plugins list will be used to populate the file.
     :param string venv: path of virtualenv to install in.
@@ -374,15 +362,12 @@ def _generate_includes_file(modules, venv):
 def create(config=None, config_file=None, force=False, dryrun=False,
            no_validate=False, verbose=True):
     """Creates an agent package (tar.gz)
-
     This will try to identify the distribution of the host you're running on.
     If it can't identify it for some reason, you'll have to supply a
     `distribution` config object in the config.yaml.
-
     A virtualenv will be created under cloudify/DISTRIBUTION-RELEASE-agent/env
     unless configured in the yaml under the `venv` property.
     The order of the modules' installation is as follows:
-
     cloudify-rest-service
     cloudify-plugins-common
     cloudify-script-plugin
@@ -394,11 +379,9 @@ def create(config=None, config_file=None, force=False, dryrun=False,
     cloudify-agent
     any additional modules specified under `additional_modules` in the yaml.
     any additional plugins specified under `additional_plugins` in the yaml.
-
     Once all modules are installed, excluded modules will be uninstalled;
     installation validation will occur; an included_plugins file will be
     generated and a tar.gz file will be created.
-
     The `output_tar` config object can be specified to determine the path to
     the output file. If omitted, a default path will be given with the
     format `DISTRIBUTION-RELEASE-agent.tar.gz`.

@@ -31,14 +31,14 @@ class Tox(TestCommand):
         self.test_suite = True
 
     def run_tests(self):
-        #import here, cause outside the eggs aren't loaded
+        # import here, cause outside the eggs aren't loaded
         import tox
         errcode = tox.cmdline(self.test_args)
         sys.exit(errcode)
 
 setup(
     name='cloudify-agent-packager',
-    version=find_version('agent_packager', '__init__.py'),
+    version='3.3a3',
     url='https://github.com/cloudify-cosmo/cloudify-agent-packager',
     author='Gigaspaces',
     author_email='cosmo-admin@gigaspaces.com',
