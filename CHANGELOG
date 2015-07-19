@@ -1,2 +1,45 @@
-[33md33eaf2[m[33m ([1;36mHEAD[m[33m, [1;31morigin/master[m[33m, [1;32mmaster[m[33m)[m loads of documentation and optimization and stuff
+[33md97fda7[m[33m ([1;36mHEAD[m[33m, [1;31morigin/agent-refactoring-project[m[33m, [1;32magent-refactoring-project[m[33m)[m removed unnecessary config file
+[33mda7eaed[m removed vagrant provisioning scripts
+[33m8b85a3b[m minor
+[33m2bedb5a[m fixed retrieval of cloudify-agent directory when system python does not match venv python
+[33m3d4204f[m added test for includes file geenrationg
+[33me47c31e[m lots of optimizations
+[33m0f0636a[m logging fix once more
+[33mcf07f24[m removed excess logging
+[33medbf7dc[m oops
+[33m2873c54[m plugins_includes.py file now in cloudify_agent package dir
+[33mda99036[m oopS!
+[33md593d60[m oops, forgot codes file
+[33m23fcebd[m arranged exit codes and some more testing
+[33mb9c90a9[m more and more test fixes
+[33m679955a[m some more coverage + optimizations
+[33m21b3261[m added .coveragerc, missing-terms coverage and fixed tests
+[33m06bf79b[m starting to fix tests
+[33mf1fc0ef[m added included plugins file generation and fixed bugs
+[33m2db8b8b[m well.. too much
+[33mee156a5[m loads of code optimizations
+[33mb99fb4b[m testing for mandatory modules now
+[33m6487dd6[m loads of fixes and optimizations.
+[33mf1702a0[m optimizations
+[33maca335d[m umph!
+[33m3b12cd6[m forgot a comma. errgit status!
+[33ma10c870[m added no-validation flag
+[33m654d08b[m types
+[33m68f34e0[m added installers to base modules list
+[33mefeef39[m final changes.. I think
+[33m33fcece[m printing MUCH better now
+[33m5fa7419[m removed some prints, squashed some bugs
+[33m4758b60[m first changes...
+[33m251efe0[m[33m ([1;31morigin/master[m[33m, [1;32mmaster[m[33m)[m fixed broken package. removed problematic dependency
+[33m83f2bd2[m moved documentation to get cloudify and added a reference link in readme
+[33m6d459b6[m some more documentation
+[33md0f3fd9[m fixed dirtree level and optimized some code
+[33m70404a2[m some minor fixes and a documentation update
+[33m08ccae1[m minor fixes
+[33mc275564[m fixed some docs and started work on vagrant
+[33m242e398[m fixed tarring problems, added some tests
+[33m784c22d[m more tests (py26 supported), optimizations, etc..
+[33md881686[m lots of code optimization.. and tests.. and more..
+[33m200bcfb[m not enough room for a summary
+[33md33eaf2[m loads of documentation and optimization and stuff
 [33m70df81a[m frst commt

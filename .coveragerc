@@ -1,0 +1,3 @@
+[run]
+omit = agent_packager/six.py
+       agent_packager/dictconfig.py

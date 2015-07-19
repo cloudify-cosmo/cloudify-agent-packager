@@ -1,4 +1,6 @@
 - agent_packager/logger.py:60:    #  TODO: (IMPRV) only perform file related actions if file handler is
 - agent_packager/logger.py:61:    #  TODO: (IMPRV) defined.
-- agent_packager/packager.py:42:    #  TODO: (IMPRV) only raise exceptions in verbose mode
-- agent_packager/packager.py:143:    #  TODO: find a workaround for strip-components using tarfile
+- agent_packager/packager.py:62:    #  TODO: (IMPRV) only raise exceptions in verbose mode
+- agent_packager/utils.py:109:    #  TODO: solve or depracate..
+- agent_packager/utils.py:110:    #  TODO: apparently, it will tar the first child dir of
+- agent_packager/utils.py:111:    #  TODO: source, and not the given parent.
