@@ -24,18 +24,6 @@ def find_version(*file_paths):
     raise RuntimeError("Unable to find version string.")
 
 
-class Tox(TestCommand):
-    def finalize_options(self):
-        TestCommand.finalize_options(self)
-        self.test_args = []
-        self.test_suite = True
-
-    def run_tests(self):
-        # import here, cause outside the eggs aren't loaded
-        import tox
-        errcode = tox.cmdline(self.test_args)
-        sys.exit(errcode)
-
 setup(
     name='cloudify-agent-packager',
     version='3.3a3',
@@ -58,6 +46,4 @@ setup(
         "virtualenv==1.11.4",
         "requests==2.4.1"
     ],
-    tests_require=['nose', 'tox'],
-    cmdclass={'test': Tox},
 )
