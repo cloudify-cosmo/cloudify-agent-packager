@@ -35,8 +35,8 @@ EMPTY_CONFIG_FILE = os.path.join(TEST_RESOURCES_DIR, 'empty_config_file.yaml')
 BASE_DIR = 'cloudify/test_venv'
 TEST_VENV = os.path.join(BASE_DIR, 'env')
 TEST_MODULE = 'xmltodict'
-TEST_FILE = 'https://github.com/cloudify-cosmo/cloudify-agent-packager/archive/master.tar.gz'  # NOQA
-MANAGER = 'https://github.com/cloudify-cosmo/cloudify-manager/archive/master.tar.gz'  # NOQA
+TEST_FILE = 'https://github.com/cloudify-cosmo/cloudify-agent-packager/archive/3.2.1.tar.gz'  # NOQA
+MANAGER = 'https://github.com/cloudify-cosmo/cloudify-manager/archive/3.2.1.tar.gz'  # NOQA
 
 
 def venv(func):
