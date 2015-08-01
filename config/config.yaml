@@ -1,12 +1,22 @@
 distribution: Ubuntu
 release: trusty
-venv: 'cloudify/test_venv/env'
 python_path: '/usr/bin/python'
-base_modules:
-    plugins_common: https://github.com/cloudify-cosmo/cloudify-plugins-common/archive/3.1rc1.tar.gz
-    rest_client: https://github.com/cloudify-cosmo/cloudify-rest-client/archive/3.1rc1.tar.gz
-    script_plugin: https://github.com/cloudify-cosmo/cloudify-script-plugin/archive/1.1rc1.tar.gz
-    diamond_plugin: https://github.com/cloudify-cosmo/cloudify-diamond-plugin/archive/1.1rc1.tar.gz
-management_modules_version: 3.1rc1
+requirements_file: 'agent_packager/tests/resources/requirements.txt'
+# cloudify_agent_version: 3.1
+cloudify_agent_module: https://github.com/nir0s/cloudify-agent/archive/master.tar.gz
+core_modules:
+    cloudify_plugins_common: https://github.com/cloudify-cosmo/cloudify-plugins-common/archive/3.1.tar.gz
+    # cloudify_rest_client: https://github.com/cloudify-cosmo/cloudify-rest-client/archive/3.1.tar.gz
+core_plugins:
+    cloudify_script_plugin: exclude
+    # cloudify_diamond_plugin: https://github.com/cloudify-cosmo/cloudify-diamond-plugin/archive/3.1.tar.gz
+    # cloudify_agent_installer_plugin: https://github.com/iliapolo/cloudify-agent-installer-plugin/archive/master.tar.gz
+    # cloudify_plugin_installer_plugin: https://github.com/iliapolo/cloudify-plugin-installer-plugin/archive/master.tar.gz
+    # cloudify_windows_agent_installer_plugin: https://github.com/iliapolo/cloudify-windows-agent-installer-plugin/archive/master.tar.gz
+    # cloudify_windows_plugin_installer_plugin: https://github.com/iliapolo/cloudify-windows-plugin-installer-plugin/archive/master.tar.gz
+additional_modules:
+    - pyyaml==3.10
+additional_plugins:
+    cloudify-fabric-plugin: https://github.com/cloudify-cosmo/cloudify-fabric-plugin/archive/1.1.tar.gz
 output_tar: Ubuntu-trusty-agent.tar.gz
-keep_venv: false
+keep_virtualenv: true

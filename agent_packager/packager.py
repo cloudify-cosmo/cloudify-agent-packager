@@ -95,18 +95,17 @@ def _make_venv(venv, python, force):
     :param bool force: whether to force creation or not if it
      already exists.
     """
-    if os.path.isdir(venv):
+    if os.path.isfile(os.path.join(utils.get_env_bin_path(venv), 'activate')):
         if force:
-            lgr.info('Removing previous virtualenv...')
-            shutil.rmtree(venv)
+            lgr.info('Installing within existing virtualenv: {0}'.format(venv))
         else:
             lgr.error('Virtualenv already exists at {0}. '
-                      'You can use the -f flag or delete the '
-                      'previous env.'.format(venv))
+                      'You can use the -f flag to install within the '
+                      'existing virtualenv.'.format(venv))
             sys.exit(codes.errors['virtualenv_already_exists'])
-
-    lgr.info('Creating virtualenv: {0}'.format(venv))
-    utils.make_virtualenv(venv, python)
+    else:
+        lgr.debug('Creating virtualenv: {0}'.format(venv))
+        utils.make_virtualenv(venv, python)
 
 
 def _handle_output_file(destination_tar, force):
@@ -129,7 +128,6 @@ def _handle_output_file(destination_tar, force):
 def _set_defaults():
     """sets the default modules dictionary
     """
-    lgr.debug('Retrieving modules to install...')
     modules = {}
     modules['core_modules'] = {}
     modules['core_plugins'] = {}
