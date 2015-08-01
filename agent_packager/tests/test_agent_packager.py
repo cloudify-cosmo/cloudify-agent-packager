@@ -230,7 +230,7 @@ class TestCreate(testtools.TestCase):
             self.assertNotIn(excluded_module, pip_freeze_output)
         shutil.rmtree(TEST_VENV)
 
-    def test_create_agent_package(self):
+    def test_create_agent_package_in_existing_venv_force(self):
         cli_options = {
             '--config': CONFIG_FILE,
             '--force': True,
@@ -238,48 +238,36 @@ class TestCreate(testtools.TestCase):
             '--no-validation': False,
             '--verbose': True
         }
-        required_modules = [
-            'cloudify-plugins-common',
-            'cloudify-rest-client',
-            'cloudify-fabric-plugin',
-            'cloudify-agent',
-            'pyyaml',
-            'xmltodict'
-        ]
-        excluded_modules = [
-            'cloudify-diamond-plugin',
-            'cloudify-script-plugin'
-        ]
-        config = ap._import_config(CONFIG_FILE)
+        utils.make_virtualenv(TEST_VENV)
         cli._run(cli_options)
-        if os.path.isdir(TEST_VENV):
+
+    def test_create_agent_package_in_existing_venv_no_force(self):
+        cli_options = {
+            '--config': CONFIG_FILE,
+            '--force': False,
+            '--dryrun': False,
+            '--no-validation': False,
+            '--verbose': True
+        }
+        utils.make_virtualenv(TEST_VENV)
+        try:
+            e = self.assertRaises(SystemExit, cli._run, cli_options)
+            self.assertEqual(
+                e.message, codes.errors['virtualenv_already_exists'])
+        finally:
             shutil.rmtree(TEST_VENV)
-        os.makedirs(TEST_VENV)
-        utils.run('tar -xzvf {0} -C {1} --strip-components=1'.format(
-            config['output_tar'], BASE_DIR))
-        os.remove(config['output_tar'])
-        self.assertTrue(os.path.isdir(TEST_VENV))
-        pip_freeze_output = utils.get_installed(
-            TEST_VENV).lower()
-        for required_module in required_modules:
-            self.assertIn(required_module, pip_freeze_output)
-        for excluded_module in excluded_modules:
-            self.assertNotIn(excluded_module, pip_freeze_output)
-        shutil.rmtree(TEST_VENV)
 
     def test_dryrun(self):
         cli_options = {
             '--config': CONFIG_FILE,
-            '--force': True,
+            '--force': False,
             '--dryrun': True,
             '--no-validation': False,
             '--verbose': True
         }
         with LogCapture(level=logging.INFO) as l:
             e = self.assertRaises(SystemExit, cli._run, cli_options)
-            l.check(('user', 'INFO', 'Creating virtualenv: {0}'.format(
-                TEST_VENV)),
-                ('user', 'INFO', 'Dryrun complete'))
+            l.check(('user', 'INFO', 'Dryrun complete'))
         self.assertEqual(codes.notifications['dryrun_complete'], e.message)
 
     @venv

@@ -415,7 +415,8 @@ def create(config=None, config_file=None, force=False, dryrun=False,
     lgr.debug('Python path is: {0}'.format(python))
     lgr.debug('Destination tarfile is: {0}'.format(destination_tar))
     # create virtualenv
-    _make_venv(venv, python, force)
+    if not dryrun:
+        _make_venv(venv, python, force)
     # remove output file or alert on existing
     _handle_output_file(destination_tar, force)
     # create modules dict
