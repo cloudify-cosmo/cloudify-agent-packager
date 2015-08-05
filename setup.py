@@ -1,8 +1,4 @@
 from setuptools import setup
-# from setuptools import find_packages
-from setuptools.command.test import test as TestCommand
-import sys
-import re
 import os
 import codecs
 
@@ -14,19 +10,9 @@ def read(*parts):
     return codecs.open(os.path.join(here, *parts), 'r').read()
 
 
-def find_version(*file_paths):
-    version_file = read(*file_paths)
-    version_match = re.search(r"^__version__ = ['\"]([^'\"]*)['\"]",
-                              version_file, re.M)
-    if version_match:
-        print('VERSION: ', version_match.group(1))
-        return version_match.group(1)
-    raise RuntimeError("Unable to find version string.")
-
-
 setup(
     name='cloudify-agent-packager',
-    version='3.3a3',
+    version='3.5.1',
     url='https://github.com/cloudify-cosmo/cloudify-agent-packager',
     author='Gigaspaces',
     author_email='cosmo-admin@gigaspaces.com',
