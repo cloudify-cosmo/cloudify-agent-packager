@@ -230,19 +230,47 @@ class TestCreate(testtools.TestCase):
             self.assertNotIn(excluded_module, pip_freeze_output)
         shutil.rmtree(TEST_VENV)
 
-    def test_dryrun(self):
+    def test_create_agent_package_in_existing_venv_force(self):
         cli_options = {
             '--config': CONFIG_FILE,
             '--force': True,
+            '--dryrun': False,
+            '--no-validation': False,
+            '--verbose': True
+        }
+        utils.make_virtualenv(TEST_VENV)
+        try:
+            cli._run(cli_options)
+        finally:
+            shutil.rmtree(TEST_VENV)
+
+    def test_create_agent_package_in_existing_venv_no_force(self):
+        cli_options = {
+            '--config': CONFIG_FILE,
+            '--force': False,
+            '--dryrun': False,
+            '--no-validation': False,
+            '--verbose': True
+        }
+        utils.make_virtualenv(TEST_VENV)
+        try:
+            e = self.assertRaises(SystemExit, cli._run, cli_options)
+            self.assertEqual(
+                e.message, codes.errors['virtualenv_already_exists'])
+        finally:
+            shutil.rmtree(TEST_VENV)
+
+    def test_dryrun(self):
+        cli_options = {
+            '--config': CONFIG_FILE,
+            '--force': False,
             '--dryrun': True,
             '--no-validation': False,
             '--verbose': True
         }
         with LogCapture(level=logging.INFO) as l:
             e = self.assertRaises(SystemExit, cli._run, cli_options)
-            l.check(('user', 'INFO', 'Creating virtualenv: {0}'.format(
-                TEST_VENV)),
-                ('user', 'INFO', 'Dryrun complete'))
+            l.check(('user', 'INFO', 'Dryrun complete'))
         self.assertEqual(codes.notifications['dryrun_complete'], e.message)
 
     @venv

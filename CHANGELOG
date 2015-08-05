@@ -1,4 +1,9 @@
-[33mf8d3d5a[m[33m ([1;36mHEAD[m[33m, [1;31morigin/master[m[33m, [1;32mmaster[m[33m)[m Bump version to 3.3m3
+[33mb005c5f[m[33m ([1;36mHEAD[m[33m, [1;31morigin/CFY-3226-allow-use-existing-virtualenv[m[33m, [1;32mCFY-3226-allow-use-existing-virtualenv[m[33m)[m CFY-3226 updated files
+[33m59b941d[m CFY-3226 now handling deletion of the virtualenv in a more logical way
+[33mf80ff38[m CFY-3226 now handling deletion of the virtualenv in a more logical way
+[33mbdfd559[m CFY-3226 fixed tests
+[33m3a87540[m CFY-3226 now installing into existing venv. now to fix tests
+[33mf8d3d5a[m Bump version to 3.3m3
 [33m89aefeb[m Merge pull request #4 from cloudify-cosmo/agent-refactoring-project
 [33m41aabf2[m Bump version to 3.3m3
 [33m905380c[m[33m ([1;31morigin/agent-refactoring-project[m[33m, [1;32magent-refactoring-project[m[33m)[m merged with master and fixed conflicts

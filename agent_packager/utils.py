@@ -5,6 +5,7 @@ import logger
 import sys
 import requests
 import re
+import os
 
 lgr = logger.init()
 
@@ -131,3 +132,21 @@ def tar(source, destination):
     if not r.returncode == 0:
         lgr.error('Failed to create tar file.')
         sys.exit(codes.errors['failed_to_create_tar'])
+
+
+def get_env_bin_path(env_path):
+    """returns the bin path for a virtualenv
+    """
+    try:
+        import virtualenv
+        return virtualenv.path_locations(env_path)[3]
+    except ImportError:
+        # this is a fallback for an edge case in which you're trying
+        # to use the script and create a virtualenv from within
+        # a virtualenv in which virtualenv isn't installed and so
+        # is not importable.
+        return os.path.join(env_path, 'bin')
+
+
+def is_virtualenv(env_path):
+    return os.path.isfile(os.path.join(get_env_bin_path(env_path), 'activate'))

@@ -13,6 +13,7 @@ import codes
 
 from jingen.jingen import Jingen
 
+
 DEFAULT_CONFIG_FILE = 'config.yaml'
 DEFAULT_OUTPUT_TAR_PATH = '{0}-{1}-agent.tar.gz'
 DEFAULT_VENV_PATH = 'cloudify/env'
@@ -33,29 +34,22 @@ CORE_MODULES_LIST = [
 CORE_PLUGINS_LIST = [
     'cloudify_script_plugin',
     'cloudify_diamond_plugin',
-    # 'cloudify_agent_installer_plugin',
-    # 'cloudify_plugin_installer_plugin',
-    # 'cloudify_windows_agent_installer_plugin',
-    # 'cloudify_windows_plugin_installer_plugin',
 ]
 
 MANDATORY_MODULES = [
     'cloudify_rest_client',
     'cloudify_plugins_common',
-    # 'cloudify_agent_installer_plugin',
-    # 'cloudify_plugin_installer_plugin',
-    # 'cloudify_windows_agent_installer_plugin',
-    # 'cloudify_windows_plugin_installer_plugin',
 ]
 
-DEFAULT_CLOUDIFY_AGENT_URL = 'https://github.com/nir0s/cloudify-agent/archive/{0}.tar.gz'  # NOQA
+DEFAULT_CLOUDIFY_AGENT_URL = 'https://github.com/cloudify-cosmo/cloudify-agent/archive/{0}.tar.gz'  # NOQA
 
 lgr = logger.init()
 verbose_output = False
 
 
 def set_global_verbosity_level(is_verbose_output=False):
-    """sets the global verbosity level for console and the lgr logger.
+    """Sets the global verbosity level for console and the lgr logger.
+
     :param bool is_verbose_output: should be output be verbose
     """
     global verbose_output
@@ -68,7 +62,8 @@ def set_global_verbosity_level(is_verbose_output=False):
 
 
 def _import_config(config_file=DEFAULT_CONFIG_FILE):
-    """returns a configuration object
+    """Returns a configuration object
+
     :param string config_file: path to config file
     """
     lgr.debug('Importing config: {0}...'.format(config_file))
@@ -86,7 +81,8 @@ def _import_config(config_file=DEFAULT_CONFIG_FILE):
 
 
 def _make_venv(venv, python, force):
-    """handles the virtualenv
+    """Handles the virtualenv.
+
     removes the virtualenv if required, else, notifies
     that it already exists. If it doesn't exist, it will be
     created.
@@ -95,24 +91,25 @@ def _make_venv(venv, python, force):
     :param bool force: whether to force creation or not if it
      already exists.
     """
-    if os.path.isdir(venv):
+    if utils.is_virtualenv(venv):
         if force:
-            lgr.info('Removing previous virtualenv...')
-            shutil.rmtree(venv)
+            lgr.info('Installing within existing virtualenv: {0}'.format(venv))
         else:
             lgr.error('Virtualenv already exists at {0}. '
-                      'You can use the -f flag or delete the '
-                      'previous env.'.format(venv))
+                      'You can use the -f flag to install within the '
+                      'existing virtualenv.'.format(venv))
             sys.exit(codes.errors['virtualenv_already_exists'])
-
-    lgr.info('Creating virtualenv: {0}'.format(venv))
-    utils.make_virtualenv(venv, python)
+    else:
+        lgr.debug('Creating virtualenv: {0}'.format(venv))
+        utils.make_virtualenv(venv, python)
 
 
 def _handle_output_file(destination_tar, force):
-    """handles the output tar
+    """Handles the output tar.
+
     removes the output file if required, else, notifies
     that it already exists.
+
     :param string destination_tar: destination tar path
     :param bool force: whether to force creation or not if
      it already exists.
@@ -129,7 +126,6 @@ def _handle_output_file(destination_tar, force):
 def _set_defaults():
     """sets the default modules dictionary
     """
-    lgr.debug('Retrieving modules to install...')
     modules = {}
     modules['core_modules'] = {}
     modules['core_plugins'] = {}
@@ -362,20 +358,19 @@ def _generate_includes_file(modules, venv):
 def create(config=None, config_file=None, force=False, dryrun=False,
            no_validate=False, verbose=True):
     """Creates an agent package (tar.gz)
+
     This will try to identify the distribution of the host you're running on.
     If it can't identify it for some reason, you'll have to supply a
-    `distribution` config object in the config.yaml.
-    A virtualenv will be created under cloudify/DISTRIBUTION-RELEASE-agent/env
-    unless configured in the yaml under the `venv` property.
+    `distribution` (e.g. Ubuntu) config object in the config.yaml.
+    The same goes for the `release` (e.g. Trusty).
+
+    A virtualenv will be created under cloudify/env.
+
     The order of the modules' installation is as follows:
     cloudify-rest-service
     cloudify-plugins-common
     cloudify-script-plugin
     cloudify-diamond-plugin
-    cloudify-agent-installer-plugin
-    cloudify-plugin-installer-plugin
-    cloudify-windows-agent-installer-plugin
-    cloudify-windows-plugin-installer-plugin
     cloudify-agent
     any additional modules specified under `additional_modules` in the yaml.
     any additional plugins specified under `additional_plugins` in the yaml.
@@ -391,7 +386,6 @@ def create(config=None, config_file=None, force=False, dryrun=False,
     # this will be updated with installed plugins and modules and used
     # to validate the installation and create the includes file
     final_set = {'modules': [], 'plugins': []}
-    # import config
     if not config:
         config = _import_config(config_file) if config_file else \
             _import_config()
@@ -409,6 +403,7 @@ def create(config=None, config_file=None, force=False, dryrun=False,
         sys.exit(codes.errors['could_not_identify_distribution'])
     python = config.get('python_path', '/usr/bin/python')
     venv = DEFAULT_VENV_PATH
+    venv_already_exists = utils.is_virtualenv(venv)
     destination_tar = config.get(
         'output_tar', DEFAULT_OUTPUT_TAR_PATH.format(distro, release))
 
@@ -416,14 +411,15 @@ def create(config=None, config_file=None, force=False, dryrun=False,
     lgr.debug('Distribution release is: {0}'.format(release))
     lgr.debug('Python path is: {0}'.format(python))
     lgr.debug('Destination tarfile is: {0}'.format(destination_tar))
-    # create virtualenv
-    _make_venv(venv, python, force)
-    # remove output file or alert on existing
+
+    if not dryrun:
+        _make_venv(venv, python, force)
+
     _handle_output_file(destination_tar, force)
-    # create modules dict
+
     modules = _set_defaults()
     modules = _merge_modules(modules, config)
-    # handle a dryun
+
     if dryrun:
         set_global_verbosity_level(True)
     lgr.debug('Modules and plugins to install: {0}'.format(json.dumps(
@@ -431,23 +427,25 @@ def create(config=None, config_file=None, force=False, dryrun=False,
     if dryrun:
         lgr.info('Dryrun complete')
         sys.exit(codes.notifications['dryrun_complete'])
-    # install all required modules
+
     final_set = _install(modules, venv, final_set)
-    # uninstall excluded modules
     _uninstall_excluded(modules, venv)
-    # validate (or not) that all required modules were installed
     if not no_validate:
         _validate(final_set, venv)
-    # generate the includes file
     _generate_includes_file(final_set, venv)
-    # create agent tar
     utils.tar(venv, destination_tar)
 
     lgr.info('The following modules and plugins were installed '
              'in the agent:\n{0}'.format(utils.get_installed(venv)))
-    # remove (or not) virtualenv
-    if not config.get('keep_venv'):
-        lgr.info('Removing origin virtualenv')
+
+    # if keep_venv is explicitly specified to be false, the virtualenv
+    # will not be deleted.
+    # if keep_venv is not in the config but the virtualenv already
+    # existed, it will not be deleted.
+    if ('keep_venv' in config and not config['keep_venv']) \
+            or ('keep_venv' not in config and not venv_already_exists):
+        lgr.info('Removing origin virtualenv...')
         shutil.rmtree(venv)
+
     # duh!
     lgr.info('Process complete!')
