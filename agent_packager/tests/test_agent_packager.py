@@ -239,7 +239,10 @@ class TestCreate(testtools.TestCase):
             '--verbose': True
         }
         utils.make_virtualenv(TEST_VENV)
-        cli._run(cli_options)
+        try:
+            cli._run(cli_options)
+        finally:
+            shutil.rmtree(TEST_VENV)
 
     def test_create_agent_package_in_existing_venv_no_force(self):
         cli_options = {
