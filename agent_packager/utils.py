@@ -146,3 +146,7 @@ def get_env_bin_path(env_path):
         # a virtualenv in which virtualenv isn't installed and so
         # is not importable.
         return os.path.join(env_path, 'bin')
+
+
+def is_virtualenv(env_path):
+    return os.path.isfile(os.path.join(get_env_bin_path(env_path), 'activate'))
