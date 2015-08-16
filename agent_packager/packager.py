@@ -355,6 +355,21 @@ def _generate_includes_file(modules, venv):
     return output_file
 
 
+def _name_archive(distro, release, version, milestone, build):
+    destination_tar = ''
+    destination_tar += '{0}-'.format(distro)
+    destination_tar += '{0}-'.format(release)
+    destination_tar += 'agent'
+    if version:
+        destination_tar += '_{0}'.format(version)
+    if milestone:
+        destination_tar += '-{0}'.format(milestone)
+    if build:
+        destination_tar += '-b{0}'.format(build)
+    destination_tar += '.tar.gz'
+    return destination_tar
+
+
 def create(config=None, config_file=None, force=False, dryrun=False,
            no_validate=False, verbose=True):
     """Creates an agent package (tar.gz)
@@ -390,10 +405,18 @@ def create(config=None, config_file=None, force=False, dryrun=False,
         config = _import_config(config_file) if config_file else \
             _import_config()
         config = {} if not config else config
+
+    name_params = {}
     try:
         (distro, release) = get_os_props()
-        distro = config.get('distribution', distro)
-        release = config.get('release', release)
+        name_params['distro'] = config.get('distribution', distro)
+        name_params['release'] = config.get('release', release)
+        name_params['version'] = config.get(
+            'version', os.environ.get('VERSION', None))
+        name_params['milestone'] = config.get(
+            'milestone', os.environ.get('PRERELEASE', None))
+        name_params['build'] = config.get(
+            'build', os.environ.get('BUILD', None))
     except Exception as ex:
         lgr.error(
             'Distribution not found in configuration '
@@ -404,11 +427,10 @@ def create(config=None, config_file=None, force=False, dryrun=False,
     python = config.get('python_path', '/usr/bin/python')
     venv = DEFAULT_VENV_PATH
     venv_already_exists = utils.is_virtualenv(venv)
-    destination_tar = config.get(
-        'output_tar', DEFAULT_OUTPUT_TAR_PATH.format(distro, release))
+    destination_tar = config.get('output_tar', _name_archive(**name_params))
 
-    lgr.debug('Distibution is: {0}'.format(distro))
-    lgr.debug('Distribution release is: {0}'.format(release))
+    lgr.debug('Distibution is: {0}'.format(name_params['distro']))
+    lgr.debug('Distribution release is: {0}'.format(name_params['release']))
     lgr.debug('Python path is: {0}'.format(python))
     lgr.debug('Destination tarfile is: {0}'.format(destination_tar))
 
@@ -438,12 +460,12 @@ def create(config=None, config_file=None, force=False, dryrun=False,
     lgr.info('The following modules and plugins were installed '
              'in the agent:\n{0}'.format(utils.get_installed(venv)))
 
-    # if keep_venv is explicitly specified to be false, the virtualenv
+    # if keep_virtualenv is explicitly specified to be false, the virtualenv
     # will not be deleted.
-    # if keep_venv is not in the config but the virtualenv already
+    # if keep_virtualenv is not in the config but the virtualenv already
     # existed, it will not be deleted.
-    if ('keep_venv' in config and not config['keep_venv']) \
-            or ('keep_venv' not in config and not venv_already_exists):
+    if ('keep_virtualenv' in config and not config['keep_virtualenv']) \
+            or ('keep_virtualenv' not in config and not venv_already_exists):
         lgr.info('Removing origin virtualenv...')
         shutil.rmtree(venv)
 
