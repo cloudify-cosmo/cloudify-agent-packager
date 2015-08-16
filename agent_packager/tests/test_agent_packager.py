@@ -316,3 +316,44 @@ class TestCreate(testtools.TestCase):
         includes_file = ap._generate_includes_file(modules, TEST_VENV)
         includes = imp.load_source('includes_file', includes_file)
         self.assertIn('cloudify-fabric-plugin', includes.included_plugins)
+
+    @venv
+    def test_create_agent_package_with_version_info(self):
+        distro = 'Ubuntu'
+        release = 'trusty'
+        os.environ['VERSION'] = '3.3.0'
+        os.environ['PRERELEASE'] = 'm4'
+        os.environ['BUILD'] = '666'
+        config = ap._import_config(CONFIG_FILE)
+        config.pop('output_tar')
+        archive = ap._name_archive(
+            distro, release,
+            os.environ['VERSION'],
+            os.environ['PRERELEASE'],
+            os.environ['BUILD'])
+        try:
+            ap.create(config, force=True, verbose=True)
+            self.assertTrue(os.path.isfile(archive))
+        finally:
+            os.remove(archive)
+            os.environ.pop('VERSION')
+            os.environ.pop('PRERELEASE')
+            os.environ.pop('BUILD')
+
+    def test_naming(self):
+        distro = 'Ubuntu'
+        release = 'trusty'
+        version = '3.3.0'
+        milestone = 'm4'
+        build = '666'
+        archive = ap._name_archive(distro, release, version, milestone, build)
+        self.assertEquals(archive, 'Ubuntu-trusty-agent_3.3.0-m4-b666.tar.gz')
+
+    def test_naming_no_version_info(self):
+        distro = 'Ubuntu'
+        release = 'trusty'
+        version = None
+        milestone = None
+        build = None
+        archive = ap._name_archive(distro, release, version, milestone, build)
+        self.assertEquals(archive, 'Ubuntu-trusty-agent.tar.gz')
