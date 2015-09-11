@@ -329,12 +329,13 @@ def _generate_includes_file(modules, venv):
     process = utils.run('{0}/bin/python -c "import cloudify_agent;'
                         ' print cloudify_agent.__file__"'.format(venv))
     cloudify_agent_module_path = os.path.dirname(process.stdout)
-    output_file = os.path.join(
+    included_plugins_py = os.path.join(
         cloudify_agent_module_path, INCLUDES_FILE)
+    included_plugins_pyc = '{0}c'.format(included_plugins_py)
 
     try:
-        previous_included = imp.load_source('included_plugins', os.path.join(
-            cloudify_agent_module_path, INCLUDES_FILE))
+        previous_included = imp.load_source('included_plugins',
+                                            included_plugins_py)
         plugins_list = previous_included.included_plugins
         for plugin in plugins_list:
             if plugin not in modules['plugins']:
@@ -343,16 +344,19 @@ def _generate_includes_file(modules, venv):
         lgr.debug('Included Plugins file could not be found in agent '
                   'module. A new file will be generated.')
 
-    lgr.debug('Writing includes file to: {0}'.format(output_file))
+    lgr.debug('Writing includes file to: {0}'.format(included_plugins_py))
     i = Jingen(
         template_file=TEMPLATE_FILE,
         vars_source=modules,
-        output_file=output_file,
+        output_file=included_plugins_py,
         template_dir=os.path.join(os.path.dirname(__file__), TEMPLATE_DIR),
         make_file=True
     )
     i.generate()
-    return output_file
+
+    if os.path.isfile(included_plugins_pyc):
+        os.remove(included_plugins_pyc)
+    return included_plugins_py
 
 
 def _name_archive(distro, release, version, milestone, build):

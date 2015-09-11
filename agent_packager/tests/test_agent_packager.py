@@ -305,6 +305,7 @@ class TestCreate(testtools.TestCase):
         utils.install_module(MOCK_MODULE, TEST_VENV)
         modules = {'plugins': ['cloudify-fabric-plugin']}
         includes_file = ap._generate_includes_file(modules, TEST_VENV)
+        self.assertFalse(os.path.isfile('{0}c'.format(includes_file)))
         includes = imp.load_source('includes_file', includes_file)
         self.assertIn('cloudify-fabric-plugin', includes.included_plugins)
         self.assertIn('cloudify-puppet-plugin', includes.included_plugins)
