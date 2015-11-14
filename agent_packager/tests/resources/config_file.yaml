@@ -1,4 +1,4 @@
-distribution: Ubuntu
+distribution: ubuntu
 release: trusty
 python_path: '/usr/bin/python'
 requirements_file: 'agent_packager/tests/resources/requirements.txt'

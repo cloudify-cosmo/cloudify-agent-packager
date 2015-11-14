@@ -16,12 +16,11 @@
 __author__ = 'nir0s'
 
 import agent_packager.packager as ap
-import agent_packager.cli as cli
 import agent_packager.utils as utils
 import agent_packager.codes as codes
-from agent_packager.logger import init
 from requests import ConnectionError
 
+import click.testing as clicktest
 import imp
 from contextlib import closing
 from testfixtures import LogCapture
@@ -62,34 +61,18 @@ def venv(func):
 
 class TestUtils(testtools.TestCase):
 
-    def test_set_global_verbosity_level(self):
-        lgr = init(base_level=logging.INFO)
-
-        with LogCapture() as l:
-            ap.set_global_verbosity_level(is_verbose_output=False)
-            lgr.debug('TEST_LOGGER_OUTPUT')
-            l.check()
-            lgr.info('TEST_LOGGER_OUTPUT')
-            l.check(('user', 'INFO', 'TEST_LOGGER_OUTPUT'))
-
-            ap.set_global_verbosity_level(is_verbose_output=True)
-            lgr.debug('TEST_LOGGER_OUTPUT')
-            l.check(
-                ('user', 'INFO', 'TEST_LOGGER_OUTPUT'),
-                ('user', 'DEBUG', 'TEST_LOGGER_OUTPUT'))
-
     def test_import_config_file(self):
-        outcome = ap._import_config(CONFIG_FILE)
+        outcome = ap.import_config(CONFIG_FILE)
         self.assertEquals(type(outcome), dict)
         self.assertIn('distribution', outcome.keys())
 
     def test_fail_import_config_file(self):
-        e = self.assertRaises(SystemExit, ap._import_config, '')
+        e = self.assertRaises(SystemExit, ap.import_config, '')
         self.assertEqual(
             codes.errors['could_not_access_config_file'], e.message)
 
     def test_import_bad_config_file_mapping(self):
-        e = self.assertRaises(SystemExit, ap._import_config, BAD_CONFIG_FILE)
+        e = self.assertRaises(SystemExit, ap.import_config, BAD_CONFIG_FILE)
         self.assertEqual(codes.errors['invalid_yaml_file'], e.message)
 
     def test_run(self):
@@ -194,13 +177,6 @@ class TestUtils(testtools.TestCase):
 class TestCreate(testtools.TestCase):
 
     def test_create_agent_package(self):
-        cli_options = {
-            '--config': CONFIG_FILE,
-            '--force': True,
-            '--dryrun': False,
-            '--no-validation': False,
-            '--verbose': True
-        }
         required_modules = [
             'cloudify-plugins-common',
             'cloudify-rest-client',
@@ -213,8 +189,9 @@ class TestCreate(testtools.TestCase):
             'cloudify-diamond-plugin',
             'cloudify-script-plugin'
         ]
-        config = ap._import_config(CONFIG_FILE)
-        cli._run(cli_options)
+        config = ap.import_config(CONFIG_FILE)
+        runner = clicktest.CliRunner()
+        runner.invoke(ap.create, ['-c{0}'.format(CONFIG_FILE), '-v', '-f'])
         if os.path.isdir(TEST_VENV):
             shutil.rmtree(TEST_VENV)
         os.makedirs(TEST_VENV)
@@ -231,80 +208,67 @@ class TestCreate(testtools.TestCase):
         shutil.rmtree(TEST_VENV)
 
     def test_create_agent_package_in_existing_venv_force(self):
-        cli_options = {
-            '--config': CONFIG_FILE,
-            '--force': True,
-            '--dryrun': False,
-            '--no-validation': False,
-            '--verbose': True
-        }
         utils.make_virtualenv(TEST_VENV)
         try:
-            cli._run(cli_options)
+            packager = ap.AgentPackager(CONFIG_FILE, verbose=True)
+            packager.create(force=True, dryrun=False, no_validate=False)
         finally:
             shutil.rmtree(TEST_VENV)
 
     def test_create_agent_package_in_existing_venv_no_force(self):
-        cli_options = {
-            '--config': CONFIG_FILE,
-            '--force': False,
-            '--dryrun': False,
-            '--no-validation': False,
-            '--verbose': True
-        }
         utils.make_virtualenv(TEST_VENV)
         try:
-            e = self.assertRaises(SystemExit, cli._run, cli_options)
+            packager = ap.AgentPackager(CONFIG_FILE, verbose=True)
+            e = self.assertRaises(SystemExit, packager.create, force=False,
+                                  dryrun=False, no_validate=False)
             self.assertEqual(
                 e.message, codes.errors['virtualenv_already_exists'])
         finally:
             shutil.rmtree(TEST_VENV)
 
     def test_dryrun(self):
-        cli_options = {
-            '--config': CONFIG_FILE,
-            '--force': False,
-            '--dryrun': True,
-            '--no-validation': False,
-            '--verbose': True
-        }
+        packager = ap.AgentPackager(CONFIG_FILE, verbose=True)
         with LogCapture(level=logging.INFO) as l:
-            e = self.assertRaises(SystemExit, cli._run, cli_options)
+            e = self.assertRaises(SystemExit, packager.create, force=False,
+                                  dryrun=True, no_validate=False)
             l.check(('user', 'INFO', 'Dryrun complete'))
         self.assertEqual(codes.notifications['dryrun_complete'], e.message)
 
     @venv
     def test_create_agent_package_no_cloudify_agent_configured(self):
-        config = ap._import_config(CONFIG_FILE)
+        config = ap.import_config(CONFIG_FILE)
         del config['cloudify_agent_module']
 
-        e = self.assertRaises(
-            SystemExit, ap.create, config, None, force=True, verbose=True)
+        packager = ap.AgentPackager(config, verbose=True)
+        e = self.assertRaises(SystemExit, packager.create, force=True)
         self.assertEqual(
             e.message, codes.errors['missing_cloudify_agent_config'])
 
     @venv
     def test_create_agent_package_existing_venv_no_force(self):
-        e = self.assertRaises(
-            SystemExit, ap.create, None, CONFIG_FILE, verbose=True)
+        packager = ap.AgentPackager(CONFIG_FILE, verbose=True)
+        e = self.assertRaises(SystemExit, packager.create)
         self.assertEqual(e.message, codes.errors['virtualenv_already_exists'])
 
     @venv
     def test_create_agent_package_tar_already_exists(self):
-        config = ap._import_config(CONFIG_FILE)
+        config = ap.import_config(CONFIG_FILE)
         shutil.rmtree(TEST_VENV)
-        with open(config['output_tar'], 'w') as a:
-            a.write('CONTENT')
-        e = self.assertRaises(
-            SystemExit, ap.create, None, CONFIG_FILE, verbose=True)
-        self.assertEqual(e.message, codes.errors['tar_already_exists'])
-        os.remove(config['output_tar'])
+        try:
+            with open(config['output_tar'], 'w') as a:
+                a.write('CONTENT')
+            packager = ap.AgentPackager(CONFIG_FILE, verbose=True)
+            e = self.assertRaises(SystemExit, packager.create)
+            self.assertEqual(e.message, codes.errors['tar_already_exists'])
+        finally:
+            os.remove(config['output_tar'])
 
     @venv
     def test_generate_includes_file(self):
         utils.install_module(MOCK_MODULE, TEST_VENV)
         modules = {'plugins': ['cloudify-fabric-plugin']}
-        includes_file = ap._generate_includes_file(modules, TEST_VENV)
+        packager = ap.AgentPackager(CONFIG_FILE, verbose=True)
+        includes_file = packager.generate_includes_file(modules, TEST_VENV)
         self.assertFalse(os.path.isfile('{0}c'.format(includes_file)))
         includes = imp.load_source('includes_file', includes_file)
         self.assertIn('cloudify-fabric-plugin', includes.included_plugins)
@@ -314,26 +278,29 @@ class TestCreate(testtools.TestCase):
     def test_generate_includes_file_no_previous_includes_file_provided(self):
         utils.install_module(MOCK_MODULE_NO_INCLUDES_FILE, TEST_VENV)
         modules = {'plugins': ['cloudify-fabric-plugin']}
-        includes_file = ap._generate_includes_file(modules, TEST_VENV)
+        packager = ap.AgentPackager(CONFIG_FILE, verbose=True)
+        includes_file = packager.generate_includes_file(modules, TEST_VENV)
         includes = imp.load_source('includes_file', includes_file)
         self.assertIn('cloudify-fabric-plugin', includes.included_plugins)
 
     @venv
     def test_create_agent_package_with_version_info(self):
-        distro = 'Ubuntu'
+        distro = 'ubuntu'
         release = 'trusty'
         os.environ['VERSION'] = '3.3.0'
         os.environ['PRERELEASE'] = 'm4'
         os.environ['BUILD'] = '666'
-        config = ap._import_config(CONFIG_FILE)
+        config = ap.import_config(CONFIG_FILE)
         config.pop('output_tar')
-        archive = ap._name_archive(
+        packager = ap.AgentPackager(config, verbose=True)
+        archive = packager.set_archive_name(
             distro, release,
             os.environ['VERSION'],
             os.environ['PRERELEASE'],
             os.environ['BUILD'])
         try:
-            ap.create(config, force=True, verbose=True)
+            packager = ap.AgentPackager(config, verbose=True)
+            packager.create(force=True)
             self.assertTrue(os.path.isfile(archive))
         finally:
             os.remove(archive)
@@ -342,19 +309,24 @@ class TestCreate(testtools.TestCase):
             os.environ.pop('BUILD')
 
     def test_naming(self):
-        distro = 'Ubuntu'
+        distro = 'ubuntu'
         release = 'trusty'
         version = '3.3.0'
         milestone = 'm4'
         build = '666'
-        archive = ap._name_archive(distro, release, version, milestone, build)
-        self.assertEquals(archive, 'Ubuntu-trusty-agent_3.3.0-m4-b666.tar.gz')
+        packager = ap.AgentPackager(CONFIG_FILE, verbose=True)
+        archive = packager.set_archive_name(
+            distro, release, version, milestone, build)
+        self.assertEquals(
+            archive, 'cloudify-ubuntu-trusty-agent_3.3.0-m4-b666.tar.gz')
 
     def test_naming_no_version_info(self):
-        distro = 'Ubuntu'
+        distro = 'ubuntu'
         release = 'trusty'
         version = None
         milestone = None
         build = None
-        archive = ap._name_archive(distro, release, version, milestone, build)
-        self.assertEquals(archive, 'Ubuntu-trusty-agent.tar.gz')
+        packager = ap.AgentPackager(CONFIG_FILE, verbose=True)
+        archive = packager.set_archive_name(
+            distro, release, version, milestone, build)
+        self.assertEquals(archive, 'cloudify-ubuntu-trusty-agent.tar.gz')
