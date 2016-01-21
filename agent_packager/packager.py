@@ -6,21 +6,13 @@ import platform
 import shutil
 import os
 import sys
-import imp
 
 import utils
 import codes
 
-from jingen.jingen import Jingen
-
-
 DEFAULT_CONFIG_FILE = 'config.yaml'
 DEFAULT_OUTPUT_TAR_PATH = '{0}-{1}-agent.tar.gz'
 DEFAULT_VENV_PATH = 'cloudify/env'
-
-INCLUDES_FILE = 'included_plugins.py'
-TEMPLATE_FILE = 'included_plugins.py.j2'
-TEMPLATE_DIR = 'resources'
 
 EXTERNAL_MODULES = [
     'celery==3.1.17'
@@ -318,47 +310,6 @@ def get_os_props():
     return distro, release
 
 
-def _generate_includes_file(modules, venv):
-    """generates the included_plugins file for `cloudify-agent` to use
-    :param dict modules: dict containing a list of modules and a list
-     of plugins. The plugins list will be used to populate the file.
-    :param string venv: path of virtualenv to install in.
-    """
-    lgr.debug('Generating includes file')
-
-    process = utils.run('{0}/bin/python -c "import cloudify_agent;'
-                        ' print cloudify_agent.__file__"'.format(venv))
-    cloudify_agent_module_path = os.path.dirname(process.stdout)
-    included_plugins_py = os.path.join(
-        cloudify_agent_module_path, INCLUDES_FILE)
-    included_plugins_pyc = '{0}c'.format(included_plugins_py)
-
-    try:
-        previous_included = imp.load_source('included_plugins',
-                                            included_plugins_py)
-        plugins_list = previous_included.included_plugins
-        for plugin in plugins_list:
-            if plugin not in modules['plugins']:
-                modules['plugins'].append(plugin)
-    except IOError:
-        lgr.debug('Included Plugins file could not be found in agent '
-                  'module. A new file will be generated.')
-
-    lgr.debug('Writing includes file to: {0}'.format(included_plugins_py))
-    i = Jingen(
-        template_file=TEMPLATE_FILE,
-        vars_source=modules,
-        output_file=included_plugins_py,
-        template_dir=os.path.join(os.path.dirname(__file__), TEMPLATE_DIR),
-        make_file=True
-    )
-    i.generate()
-
-    if os.path.isfile(included_plugins_pyc):
-        os.remove(included_plugins_pyc)
-    return included_plugins_py
-
-
 def _name_archive(distro, release, version, milestone, build):
     destination_tar = ''
     destination_tar += '{0}-'.format(distro)
@@ -394,8 +345,7 @@ def create(config=None, config_file=None, force=False, dryrun=False,
     any additional modules specified under `additional_modules` in the yaml.
     any additional plugins specified under `additional_plugins` in the yaml.
     Once all modules are installed, excluded modules will be uninstalled;
-    installation validation will occur; an included_plugins file will be
-    generated and a tar.gz file will be created.
+    installation validation will occur; a tar.gz file will be created.
     The `output_tar` config object can be specified to determine the path to
     the output file. If omitted, a default path will be given with the
     format `DISTRIBUTION-RELEASE-agent.tar.gz`.
@@ -403,7 +353,7 @@ def create(config=None, config_file=None, force=False, dryrun=False,
     set_global_verbosity_level(verbose)
 
     # this will be updated with installed plugins and modules and used
-    # to validate the installation and create the includes file
+    # to validate the installation
     final_set = {'modules': [], 'plugins': []}
     if not config:
         config = _import_config(config_file) if config_file else \
@@ -458,7 +408,6 @@ def create(config=None, config_file=None, force=False, dryrun=False,
     _uninstall_excluded(modules, venv)
     if not no_validate:
         _validate(final_set, venv)
-    _generate_includes_file(final_set, venv)
     utils.tar(venv, destination_tar)
 
     lgr.info('The following modules and plugins were installed '
