@@ -21,6 +21,7 @@ setup(
     description='Creates Cloudify Agent Packages',
     long_description=read('README.rst'),
     packages=['agent_packager'],
+    include_package_data=True,
     entry_points={
         'console_scripts': [
             'cfy-ap = agent_packager.cli:main',
@@ -29,7 +30,8 @@ setup(
     install_requires=[
         "docopt==.0.6.1",
         "pyyaml==3.10",
-        "virtualenv>=14.0.0,<15.0.0",
+        "virtualenv==12.0.7",
         "requests==2.7.0",
+        "jingen==0.1.0"
     ],
 )
