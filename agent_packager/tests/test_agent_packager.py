@@ -13,8 +13,6 @@
 #    * See the License for the specific language governing permissions and
 #    * limitations under the License.
 
-__author__ = 'nir0s'
-
 import agent_packager.packager as ap
 import agent_packager.cli as cli
 import agent_packager.utils as utils
@@ -22,7 +20,6 @@ import agent_packager.codes as codes
 from agent_packager.logger import init
 from requests import ConnectionError
 
-import imp
 from contextlib import closing
 from testfixtures import LogCapture
 import logging
@@ -43,8 +40,6 @@ TEST_MODULE = 'xmltodict'
 TEST_FILE = 'https://github.com/cloudify-cosmo/cloudify-agent-packager/archive/master.tar.gz'  # NOQA
 MANAGER = 'https://github.com/cloudify-cosmo/cloudify-manager/archive/master.tar.gz'  # NOQA
 MOCK_MODULE = os.path.join(TEST_RESOURCES_DIR, 'mock-module')
-MOCK_MODULE_NO_INCLUDES_FILE = os.path.join(
-    TEST_RESOURCES_DIR, 'mock-module-no-includes')
 
 
 def venv(func):
@@ -299,24 +294,6 @@ class TestCreate(testtools.TestCase):
             SystemExit, ap.create, None, CONFIG_FILE, verbose=True)
         self.assertEqual(e.message, codes.errors['tar_already_exists'])
         os.remove(config['output_tar'])
-
-    @venv
-    def test_generate_includes_file(self):
-        utils.install_module(MOCK_MODULE, TEST_VENV)
-        modules = {'plugins': ['cloudify-fabric-plugin']}
-        includes_file = ap._generate_includes_file(modules, TEST_VENV)
-        self.assertFalse(os.path.isfile('{0}c'.format(includes_file)))
-        includes = imp.load_source('includes_file', includes_file)
-        self.assertIn('cloudify-fabric-plugin', includes.included_plugins)
-        self.assertIn('cloudify-puppet-plugin', includes.included_plugins)
-
-    @venv
-    def test_generate_includes_file_no_previous_includes_file_provided(self):
-        utils.install_module(MOCK_MODULE_NO_INCLUDES_FILE, TEST_VENV)
-        modules = {'plugins': ['cloudify-fabric-plugin']}
-        includes_file = ap._generate_includes_file(modules, TEST_VENV)
-        includes = imp.load_source('includes_file', includes_file)
-        self.assertIn('cloudify-fabric-plugin', includes.included_plugins)
 
     @venv
     def test_create_agent_package_with_version_info(self):
