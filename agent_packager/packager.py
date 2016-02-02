@@ -157,7 +157,7 @@ class AgentPackager():
 
         self.python = python_path
 
-    def create(self, force=False, dryrun=False, no_validate=False,
+    def create(self, force=False, dryrun=False, no_validate=False, tag='',
                agent_source=DEFAULT_CLOUDIFY_AGENT_URL.format('master'),
                reqs_file=DEFAULT_CLOUDIFY_AGENT_REQ_FILE_URL.format('master'),
                exclude=None, output_path='', keep_virtualenv=False,
@@ -187,8 +187,12 @@ class AgentPackager():
         format `DISTRIBUTION-RELEASE-agent.tar.gz`.
         """
 
-        self.agent_source = agent_source
-        self.reqs_file = reqs_file
+        self.agent_source = \
+            DEFAULT_CLOUDIFY_AGENT_URL.format(tag) \
+            if tag else agent_source
+        self.reqs_file = \
+            DEFAULT_CLOUDIFY_AGENT_REQ_FILE_URL.format(tag) \
+            if tag else reqs_file
         self.pip_args = pip_args
 
         # this will be updated with installed plugins and packages and used
@@ -220,7 +224,7 @@ class AgentPackager():
         lgr.debug('Packages and plugins to install: {0}'.format(json.dumps(
             packages, sort_keys=True, indent=4, separators=(',', ': '))))
         if dryrun:
-            lgr.info('Dryrun complete')
+            lgr.info('Dryrun complete!')
             sys.exit(codes.notifications['dryrun_complete'])
 
         final_set = self._install(packages, venv, final_set)
@@ -468,6 +472,8 @@ def main():
 
 
 @click.command()
+@click.option('-t', '--tag', required=False,
+              help='Tag, Version or Branch to use for packaging.')
 @click.option('-c', '--config', required=False, default='config.yaml',
               help='Source URL, Path or package name.')
 @click.option('-s', '--cloudify-agent-source', required=False,
@@ -487,21 +493,21 @@ def main():
                    'This argument can be provided multiple times.')
 @click.option('--dryrun', default=False, is_flag=True,
               help='Do not create package. Rather, show potential outcome.')
-@click.option('-nv', '--no-validate', default=False, is_flag=True,
+@click.option('--no-validate', default=False, is_flag=True,
               help='Output directory for the tar file.')
 @click.option('-o', '--output-path', default=None,
               help='Output path for the archive.')
 @click.option('--pip-args', default=None,
               help='Additional args to pass to the pip install command.')
 @click.option('-v', '--verbose', default=False, is_flag=True)
-def create(config, cloudify_agent_source, requirements_file, python_path,
+def create(tag, config, cloudify_agent_source, requirements_file, python_path,
            force, keep_virtualenv, exclude, dryrun, no_validate, output_path,
            pip_args, verbose):
     """Creates an agent package (tar.gz)
     """
     logger.configure()
     packager = AgentPackager(config, python_path, verbose)
-    packager.create(force, dryrun, no_validate, cloudify_agent_source,
+    packager.create(force, dryrun, no_validate, tag, cloudify_agent_source,
                     requirements_file, exclude, output_path, keep_virtualenv,
                     pip_args)
 

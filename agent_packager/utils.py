@@ -204,6 +204,6 @@ def get_os_props():
     """returns a tuple of the distro and release
     """
     data = platform.dist()
-    distro = data[0]
-    release = data[2]
+    distro = data[0] or 'None'
+    release = data[2] or 'None'
     return distro, release

@@ -18,13 +18,12 @@ __author__ = 'nir0s'
 import agent_packager.packager as ap
 import agent_packager.utils as utils
 import agent_packager.codes as codes
-from requests import ConnectionError
 
 import click.testing as clicktest
 import imp
 from contextlib import closing
-from testfixtures import LogCapture
-import logging
+# from testfixtures import LogCapture
+# import logging
 import tarfile
 import testtools
 import os
@@ -38,12 +37,12 @@ BAD_CONFIG_FILE = os.path.join(TEST_RESOURCES_DIR, 'bad_config_file.yaml')
 EMPTY_CONFIG_FILE = os.path.join(TEST_RESOURCES_DIR, 'empty_config_file.yaml')
 BASE_DIR = 'cloudify'
 TEST_VENV = os.path.join(BASE_DIR, 'env')
-TEST_MODULE = 'xmltodict'
+TEST_PACKAGE = 'xmltodict'
 TEST_FILE = 'https://github.com/cloudify-cosmo/cloudify-agent-packager/archive/master.tar.gz'  # NOQA
 MANAGER = 'https://github.com/cloudify-cosmo/cloudify-manager/archive/master.tar.gz'  # NOQA
-MOCK_MODULE = os.path.join(TEST_RESOURCES_DIR, 'mock-module')
-MOCK_MODULE_NO_INCLUDES_FILE = os.path.join(
-    TEST_RESOURCES_DIR, 'mock-module-no-includes')
+MOCK_PACKAGE = os.path.join(TEST_RESOURCES_DIR, 'mock-package')
+MOCK_PACKAGE_NO_INCLUDES_FILE = os.path.join(
+    TEST_RESOURCES_DIR, 'mock-package-no-includes')
 
 
 def venv(func):
@@ -54,9 +53,24 @@ def venv(func):
         except:
             pass
         utils.make_virtualenv(TEST_VENV)
-        func(*args, **kwargs)
-        shutil.rmtree(TEST_VENV)
+        try:
+            func(*args, **kwargs)
+        finally:
+            shutil.rmtree(BASE_DIR)
     return execution_handler
+
+
+def _invoke_click(func, args_dict):
+
+    args_dict = args_dict or {}
+    args_list = []
+    for arg, value in args_dict.items():
+        if value:
+            args_list.append(arg + value)
+        else:
+            args_list.append(arg)
+
+    return clicktest.CliRunner().invoke(getattr(ap, func), args_list)
 
 
 class TestUtils(testtools.TestCase):
@@ -69,11 +83,11 @@ class TestUtils(testtools.TestCase):
     def test_fail_import_config_file(self):
         e = self.assertRaises(SystemExit, ap.import_config, '')
         self.assertEqual(
-            codes.errors['could_not_access_config_file'], e.message)
+            codes.errors['could_not_access_config_file'], str(e))
 
     def test_import_bad_config_file_mapping(self):
         e = self.assertRaises(SystemExit, ap.import_config, BAD_CONFIG_FILE)
-        self.assertEqual(codes.errors['invalid_yaml_file'], e.message)
+        self.assertEqual(codes.errors['invalid_yaml_file'], str(e))
 
     def test_run(self):
         p = utils.run('uname')
@@ -85,38 +99,38 @@ class TestUtils(testtools.TestCase):
 
     @venv
     def test_create_virtualenv(self):
-        if not os.path.exists('{0}/bin/python'.format(TEST_VENV)):
-            raise Exception('venv not created')
+        if not os.path.exists(os.path.join(TEST_VENV, 'bin', 'python')):
+            raise Exception('Failed to create virtualenv.')
 
     def test_fail_create_virtualenv_bad_dir(self):
         e = self.assertRaises(
             SystemExit, utils.make_virtualenv, '/' + TEST_VENV)
         self.assertEqual(
-            codes.errors['could_not_create_virtualenv'], e.message)
+            codes.errors['could_not_create_virtualenv'], str(e))
 
     def test_fail_create_virtualenv_missing_python(self):
         e = self.assertRaises(
             SystemExit, utils.make_virtualenv, TEST_VENV,
             '/usr/bin/missing_python')
         self.assertEqual(
-            codes.errors['could_not_create_virtualenv'], e.message)
+            codes.errors['could_not_create_virtualenv'], str(e))
 
     @venv
-    def test_install_module(self):
-        utils.install_module(TEST_MODULE, TEST_VENV)
+    def test_install_package(self):
+        utils.install_package(TEST_PACKAGE, TEST_VENV)
         pip_freeze_output = utils.get_installed(TEST_VENV).lower()
-        self.assertIn(TEST_MODULE, pip_freeze_output)
+        self.assertIn(TEST_PACKAGE, pip_freeze_output)
 
     @venv
-    def test_install_nonexisting_module(self):
+    def test_install_nonexisting_package(self):
         e = self.assertRaises(
-            SystemExit, utils.install_module, 'BLAH!!', TEST_VENV)
-        self.assertEqual(codes.errors['could_not_install_module'], e.message)
+            SystemExit, utils.install_package, 'BLAH!!', TEST_VENV)
+        self.assertEqual(codes.errors['could_not_install_package'], str(e))
 
-    def test_install_module_nonexisting_venv(self):
+    def test_install_package_nonexisting_venv(self):
         e = self.assertRaises(
-            SystemExit, utils.install_module, TEST_MODULE, 'BLAH!!')
-        self.assertEqual(codes.errors['could_not_install_module'], e.message)
+            SystemExit, utils.install_package, TEST_PACKAGE, 'BLAH!!')
+        self.assertEqual(codes.errors['could_not_install_package'], str(e))
 
     def test_download_file(self):
         utils.download_file(TEST_FILE, 'file')
@@ -129,17 +143,12 @@ class TestUtils(testtools.TestCase):
             SystemExit, utils.download_file,
             'http://www.google.com/x.tar.gz', 'file')
         self.assertEqual(
-            codes.errors['could_not_download_file'], e.message)
+            codes.errors['could_not_download_file'], str(e))
 
     def test_download_bad_url(self):
         e = self.assertRaises(
             Exception, utils.download_file, 'something', 'file')
-        self.assertIn('Invalid URL', e.message)
-
-    def test_download_connection_failed(self):
-        e = self.assertRaises(
-            ConnectionError, utils.download_file, 'http://something', 'file')
-        self.assertIn('Connection aborted', str(e))
+        self.assertIn('Invalid URL', str(e))
 
     def test_download_missing_path(self):
         e = self.assertRaises(
@@ -151,33 +160,42 @@ class TestUtils(testtools.TestCase):
         self.assertIn('Permission denied', e)
 
     def test_tar(self):
+        content_file = os.path.join('dir', 'content.file')
         os.makedirs('dir')
-        with open('dir/content.file', 'w') as f:
-            f.write('CONTENT')
-        utils.tar('dir', 'tar.file')
-        shutil.rmtree('dir')
+        try:
+            with open(content_file, 'w') as f:
+                f.write('CONTENT')
+            utils.tar('dir', 'tar.file')
+        finally:
+            shutil.rmtree('dir')
         self.assertTrue(tarfile.is_tarfile('tar.file'))
-        with closing(tarfile.open('tar.file', 'r:gz')) as tar:
-            members = tar.getnames()
-            self.assertIn('dir/content.file', members)
-        os.remove('tar.file')
+        try:
+            with closing(tarfile.open('tar.file', 'r:gz')) as tar:
+                members = tar.getnames()
+                self.assertIn(content_file, members)
+        finally:
+            os.remove('tar.file')
 
     @venv
     def test_tar_no_permissions(self):
         e = self.assertRaises(SystemExit, utils.tar, TEST_VENV, '/file')
-        self.assertEqual(e.message, codes.errors['failed_to_create_tar'])
+        self.assertEqual(codes.errors['failed_to_create_tar'], str(e))
 
     @venv
     def test_tar_missing_source(self):
         e = self.assertRaises(SystemExit, utils.tar, 'missing', 'file')
-        self.assertEqual(e.message, codes.errors['failed_to_create_tar'])
+        self.assertEqual(codes.errors['failed_to_create_tar'], str(e))
         os.remove('file')
 
 
 class TestCreate(testtools.TestCase):
 
+    def setUp(self):
+        super(TestCreate, self).setUp()
+        self.packager = ap.AgentPackager(CONFIG_FILE, verbose=True)
+
     def test_create_agent_package(self):
-        required_modules = [
+        required_packages = [
             'cloudify-plugins-common',
             'cloudify-rest-client',
             'cloudify-fabric-plugin',
@@ -185,13 +203,17 @@ class TestCreate(testtools.TestCase):
             'pyyaml',
             'xmltodict'
         ]
-        excluded_modules = [
+        excluded_packages = [
             'cloudify-diamond-plugin',
             'cloudify-script-plugin'
         ]
         config = ap.import_config(CONFIG_FILE)
-        runner = clicktest.CliRunner()
-        runner.invoke(ap.create, ['-c{0}'.format(CONFIG_FILE), '-v', '-f'])
+        params = {
+            '-c': CONFIG_FILE,
+            '-v': None,
+            '-f': None
+        }
+        _invoke_click('create', params)
         if os.path.isdir(TEST_VENV):
             shutil.rmtree(TEST_VENV)
         os.makedirs(TEST_VENV)
@@ -201,54 +223,59 @@ class TestCreate(testtools.TestCase):
         self.assertTrue(os.path.isdir(TEST_VENV))
         pip_freeze_output = utils.get_installed(
             TEST_VENV).lower()
-        for required_module in required_modules:
-            self.assertIn(required_module, pip_freeze_output)
-        for excluded_module in excluded_modules:
-            self.assertNotIn(excluded_module, pip_freeze_output)
-        shutil.rmtree(TEST_VENV)
+        for required_package in required_packages:
+            self.assertIn(required_package, pip_freeze_output)
+        for excluded_package in excluded_packages:
+            self.assertNotIn(excluded_package, pip_freeze_output)
+        shutil.rmtree(BASE_DIR)
 
     def test_create_agent_package_in_existing_venv_force(self):
         utils.make_virtualenv(TEST_VENV)
+        params = {
+            '-f': None,
+            '--no-validate': None
+        }
         try:
-            packager = ap.AgentPackager(CONFIG_FILE, verbose=True)
-            packager.create(force=True, dryrun=False, no_validate=False)
+            _invoke_click('create', params)
+            # packager = ap.AgentPackager(CONFIG_FILE, verbose=True)
+            # packager.create(force=True, dryrun=False, no_validate=False)
         finally:
-            shutil.rmtree(TEST_VENV)
+            shutil.rmtree(BASE_DIR)
 
     def test_create_agent_package_in_existing_venv_no_force(self):
         utils.make_virtualenv(TEST_VENV)
         try:
-            packager = ap.AgentPackager(CONFIG_FILE, verbose=True)
-            e = self.assertRaises(SystemExit, packager.create, force=False,
-                                  dryrun=False, no_validate=False)
-            self.assertEqual(
-                e.message, codes.errors['virtualenv_already_exists'])
+            e = self.assertRaises(SystemExit, self.packager.create,
+                                  force=False, dryrun=False, no_validate=False)
+            self.assertEqual(codes.errors['virtualenv_already_exists'], str(e))
         finally:
-            shutil.rmtree(TEST_VENV)
+            shutil.rmtree(BASE_DIR)
 
     def test_dryrun(self):
-        packager = ap.AgentPackager(CONFIG_FILE, verbose=True)
-        with LogCapture(level=logging.INFO) as l:
-            e = self.assertRaises(SystemExit, packager.create, force=False,
-                                  dryrun=True, no_validate=False)
-            l.check(('user', 'INFO', 'Dryrun complete'))
-        self.assertEqual(codes.notifications['dryrun_complete'], e.message)
+        params = {
+            '-c': CONFIG_FILE,
+            '-v': None,
+            '--dryrun': None
+        }
+        result = _invoke_click('create', params)
+        self.assertIn('Dryrun complete!', str(result.output))
+        self.assertEqual(
+            codes.notifications['dryrun_complete'], result.exit_code)
 
     @venv
     def test_create_agent_package_no_cloudify_agent_configured(self):
         config = ap.import_config(CONFIG_FILE)
-        del config['cloudify_agent_module']
+        del config['cloudify_agent_package']
 
         packager = ap.AgentPackager(config, verbose=True)
         e = self.assertRaises(SystemExit, packager.create, force=True)
-        self.assertEqual(
-            e.message, codes.errors['missing_cloudify_agent_config'])
+        self.assertEqual(codes.errors['missing_cloudify_agent_config'], str(e))
 
     @venv
     def test_create_agent_package_existing_venv_no_force(self):
         packager = ap.AgentPackager(CONFIG_FILE, verbose=True)
         e = self.assertRaises(SystemExit, packager.create)
-        self.assertEqual(e.message, codes.errors['virtualenv_already_exists'])
+        self.assertEqual(codes.errors['virtualenv_already_exists'], str(e))
 
     @venv
     def test_create_agent_package_tar_already_exists(self):
@@ -259,16 +286,16 @@ class TestCreate(testtools.TestCase):
                 a.write('CONTENT')
             packager = ap.AgentPackager(CONFIG_FILE, verbose=True)
             e = self.assertRaises(SystemExit, packager.create)
-            self.assertEqual(e.message, codes.errors['tar_already_exists'])
+            self.assertEqual(codes.errors['tar_already_exists'], str(e))
         finally:
             os.remove(config['output_tar'])
 
     @venv
     def test_generate_includes_file(self):
-        utils.install_module(MOCK_MODULE, TEST_VENV)
-        modules = {'plugins': ['cloudify-fabric-plugin']}
+        utils.install_package(MOCK_PACKAGE, TEST_VENV)
+        packages = {'plugins': ['cloudify-fabric-plugin']}
         packager = ap.AgentPackager(CONFIG_FILE, verbose=True)
-        includes_file = packager.generate_includes_file(modules, TEST_VENV)
+        includes_file = packager.generate_includes_file(packages, TEST_VENV)
         self.assertFalse(os.path.isfile('{0}c'.format(includes_file)))
         includes = imp.load_source('includes_file', includes_file)
         self.assertIn('cloudify-fabric-plugin', includes.included_plugins)
@@ -276,10 +303,10 @@ class TestCreate(testtools.TestCase):
 
     @venv
     def test_generate_includes_file_no_previous_includes_file_provided(self):
-        utils.install_module(MOCK_MODULE_NO_INCLUDES_FILE, TEST_VENV)
-        modules = {'plugins': ['cloudify-fabric-plugin']}
+        utils.install_package(MOCK_PACKAGE_NO_INCLUDES_FILE, TEST_VENV)
+        packages = {'plugins': ['cloudify-fabric-plugin']}
         packager = ap.AgentPackager(CONFIG_FILE, verbose=True)
-        includes_file = packager.generate_includes_file(modules, TEST_VENV)
+        includes_file = packager.generate_includes_file(packages, TEST_VENV)
         includes = imp.load_source('includes_file', includes_file)
         self.assertIn('cloudify-fabric-plugin', includes.included_plugins)
 
@@ -308,6 +335,8 @@ class TestCreate(testtools.TestCase):
             os.environ.pop('PRERELEASE')
             os.environ.pop('BUILD')
 
+
+class TestArchiveNaming(testtools.TestCase):
     def test_naming(self):
         distro = 'ubuntu'
         release = 'trusty'
