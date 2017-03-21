@@ -538,6 +538,7 @@ class DictConfigurator(BaseConfigurator):
         root = logging.getLogger()
         self.common_logger_config(root, config, incremental)
 
+        
 dictConfigClass = DictConfigurator
 
 
