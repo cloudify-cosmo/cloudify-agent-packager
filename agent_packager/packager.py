@@ -6,13 +6,13 @@ import platform
 import shutil
 import os
 import sys
+import tempfile
 
 import utils
 import codes
 
 DEFAULT_CONFIG_FILE = 'config.yaml'
 DEFAULT_OUTPUT_TAR_PATH = '{0}-{1}-agent.tar.gz'
-DEFAULT_VENV_PATH = 'cloudify/env'
 
 PREINSTALL_MODULES = [
     'setuptools==36.8.0'
@@ -62,6 +62,7 @@ def _import_config(config_file=DEFAULT_CONFIG_FILE):
 
     :param string config_file: path to config file
     """
+    config_file = os.path.expanduser(config_file)
     lgr.debug('Importing config: {0}...'.format(config_file))
     try:
         with open(config_file, 'r') as c:
@@ -332,15 +333,13 @@ def _name_archive(distro, release, version, milestone, build):
 
 
 def create(config=None, config_file=None, force=False, dryrun=False,
-           no_validate=False, verbose=True):
+           no_validate=False, verbose=True, virtualenv=None):
     """Creates an agent package (tar.gz)
 
     This will try to identify the distribution of the host you're running on.
     If it can't identify it for some reason, you'll have to supply a
     `distribution` (e.g. Ubuntu) config object in the config.yaml.
     The same goes for the `release` (e.g. Trusty).
-
-    A virtualenv will be created under cloudify/env.
 
     The order of the modules' installation is as follows:
     cloudify-rest-service
@@ -385,7 +384,7 @@ def create(config=None, config_file=None, force=False, dryrun=False,
             '({0})'.format(ex.message))
         sys.exit(codes.errors['could_not_identify_distribution'])
     python = config.get('python_path', '/usr/bin/python')
-    venv = DEFAULT_VENV_PATH
+    venv = virtualenv or tempfile.mkdtemp(prefix='agent-packager')
     venv_already_exists = utils.is_virtualenv(venv)
     destination_tar = config.get('output_tar', _name_archive(**name_params))
 
