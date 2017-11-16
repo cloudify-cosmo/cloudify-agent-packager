@@ -47,7 +47,7 @@ def venv(func):
     def execution_handler(*args, **kwargs):
         try:
             shutil.rmtree(TEST_VENV)
-        except:
+        except Exception:
             pass
         utils.make_virtualenv(TEST_VENV)
         func(*args, **kwargs)
@@ -60,16 +60,16 @@ class TestUtils(testtools.TestCase):
     def test_set_global_verbosity_level(self):
         lgr = init(base_level=logging.INFO)
 
-        with LogCapture() as l:
+        with LogCapture() as log_cap:
             ap.set_global_verbosity_level(is_verbose_output=False)
             lgr.debug('TEST_LOGGER_OUTPUT')
-            l.check()
+            log_cap.check()
             lgr.info('TEST_LOGGER_OUTPUT')
-            l.check(('user', 'INFO', 'TEST_LOGGER_OUTPUT'))
+            log_cap.check(('user', 'INFO', 'TEST_LOGGER_OUTPUT'))
 
             ap.set_global_verbosity_level(is_verbose_output=True)
             lgr.debug('TEST_LOGGER_OUTPUT')
-            l.check(
+            log_cap.check(
                 ('user', 'INFO', 'TEST_LOGGER_OUTPUT'),
                 ('user', 'DEBUG', 'TEST_LOGGER_OUTPUT'))
 
@@ -263,9 +263,9 @@ class TestCreate(testtools.TestCase):
             '--no-validation': False,
             '--verbose': True
         }
-        with LogCapture(level=logging.INFO) as l:
+        with LogCapture(level=logging.INFO) as log_cap:
             e = self.assertRaises(SystemExit, cli._run, cli_options)
-            l.check(('user', 'INFO', 'Dryrun complete'))
+            log_cap.check(('user', 'INFO', 'Dryrun complete'))
         self.assertEqual(codes.notifications['dryrun_complete'], e.message)
 
     @venv
