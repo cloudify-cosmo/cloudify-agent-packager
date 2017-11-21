@@ -268,8 +268,9 @@ def _install(modules, venv, final_set):
     :param dict final_set: dict to populate with modules.
     """
     installer = ModuleInstaller(modules, venv, final_set)
-    lgr.info('Installing module from requirements file...')
+    lgr.info('Installing modules required by setup...')
     installer.install_modules(PREINSTALL_MODULES)
+    lgr.info('Installing module from requirements file...')
     installer.install_requirements_file()
     lgr.info('Installing external modules...')
     installer.install_modules(EXTERNAL_MODULES)
