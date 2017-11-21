@@ -14,6 +14,10 @@ DEFAULT_CONFIG_FILE = 'config.yaml'
 DEFAULT_OUTPUT_TAR_PATH = '{0}-{1}-agent.tar.gz'
 DEFAULT_VENV_PATH = 'cloudify/env'
 
+PREINSTALL_MODULES = [
+    'setuptools==36.8.0'
+]
+
 EXTERNAL_MODULES = [
     'celery==3.1.17'
 ]
@@ -264,6 +268,8 @@ def _install(modules, venv, final_set):
     :param dict final_set: dict to populate with modules.
     """
     installer = ModuleInstaller(modules, venv, final_set)
+    lgr.info('Installing modules required by setup...')
+    installer.install_modules(PREINSTALL_MODULES)
     lgr.info('Installing module from requirements file...')
     installer.install_requirements_file()
     lgr.info('Installing external modules...')
