@@ -62,6 +62,7 @@ def _import_config(config_file=DEFAULT_CONFIG_FILE):
 
     :param string config_file: path to config file
     """
+    config_file = os.path.expanduser(config_file)
     lgr.debug('Importing config: {0}...'.format(config_file))
     try:
         with open(config_file, 'r') as c:

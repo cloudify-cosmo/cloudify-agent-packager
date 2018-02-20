@@ -14,9 +14,8 @@ def valid_ident(s):
         raise ValueError('Not a valid Python identifier: %r' % s)
     return True
 
-#
+
 # This function is defined in logging only in recent versions of Python
-#
 try:
     from logging import _checkLevel
 except ImportError:
@@ -537,6 +536,7 @@ class DictConfigurator(BaseConfigurator):
         """Configure a root logger from a dictionary."""
         root = logging.getLogger()
         self.common_logger_config(root, config, incremental)
+
 
 dictConfigClass = DictConfigurator
 
