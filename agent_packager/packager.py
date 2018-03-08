@@ -38,6 +38,7 @@ MANDATORY_MODULES = [
 ]
 
 DEFAULT_CLOUDIFY_AGENT_URL = 'https://github.com/cloudify-cosmo/cloudify-agent/archive/{0}.tar.gz'  # NOQA
+VENV_ROOT = ['cloudify', 'env']
 
 lgr = logger.init()
 verbose_output = False
@@ -333,7 +334,7 @@ def _name_archive(distro, release, version, milestone, build):
 
 
 def create(config=None, config_file=None, force=False, dryrun=False,
-           no_validate=False, verbose=True, virtualenv=None):
+           no_validate=False, verbose=True):
     """Creates an agent package (tar.gz)
 
     This will try to identify the distribution of the host you're running on.
@@ -384,8 +385,8 @@ def create(config=None, config_file=None, force=False, dryrun=False,
             '({0})'.format(ex.message))
         sys.exit(codes.errors['could_not_identify_distribution'])
     python = config.get('python_path', '/usr/bin/python')
-    venv = virtualenv or tempfile.mkdtemp(prefix='agent-packager')
-    venv_already_exists = utils.is_virtualenv(venv)
+    work_root = tempfile.mkdtemp(prefix='agent-packager')
+    venv = os.path.join(work_root, *VENV_ROOT)
     destination_tar = config.get('output_tar', _name_archive(**name_params))
 
     lgr.debug('Distibution is: {0}'.format(name_params['distro']))
@@ -413,19 +414,18 @@ def create(config=None, config_file=None, force=False, dryrun=False,
     _uninstall_excluded(modules, venv)
     if not no_validate:
         _validate(final_set, venv)
-    utils.tar(venv, destination_tar)
+    utils.tar(work_root, os.path.join(*VENV_ROOT), destination_tar)
 
     lgr.info('The following modules and plugins were installed '
              'in the agent:\n{0}'.format(utils.get_installed(venv)))
 
     # if keep_virtualenv is explicitly specified to be false, the virtualenv
     # will not be deleted.
-    # if keep_virtualenv is not in the config but the virtualenv already
-    # existed, it will not be deleted.
-    if ('keep_virtualenv' in config and not config['keep_virtualenv']) \
-            or ('keep_virtualenv' not in config and not venv_already_exists):
-        lgr.info('Removing origin virtualenv...')
-        shutil.rmtree(venv)
+    if not config.get('keep_virtualenv', False):
+        lgr.info('Removing virtualenv...')
+        shutil.rmtree(work_root)
+    else:
+        lgr.info('Virtualenv kept: {0}'.format(work_root))
 
     # duh!
     lgr.info('Process complete!')

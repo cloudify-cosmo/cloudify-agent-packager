@@ -3,7 +3,7 @@
 """Script to run Cloudify's Agent Packager via command line
 
 Usage:
-    cfy-ap [--config=<path> --force --dryrun --no-validation -v --env=<env_path>]
+    cfy-ap [--config=<path> --force --dryrun --no-validation -v]
     cfy-ap --version
 
 Options:
@@ -12,7 +12,6 @@ Options:
     -f --force                  Forces deletion and creation of venv and tar file.
     -d --dryrun                 Prints out the modules to be installed without actually installing them.
     -n --no-validation          Does not validate that all modules were installed correctly.
-    -e --env=<env_path>         Virtualenv to use (defaults to a temporary directory)
     -v --verbose                verbose level logging
     --version                   Display current version
 """
@@ -48,8 +47,7 @@ def _run(test_options=None):
         force=options.get('--force'),
         dryrun=options.get('--dryrun'),
         no_validate=options.get('--no-validation'),
-        verbose=options.get('--verbose'),
-        virtualenv=options.get('--env')
+        verbose=options.get('--verbose')
         )
 
 def main():
