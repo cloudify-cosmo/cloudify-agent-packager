@@ -166,7 +166,7 @@ class TestUtils(testtools.TestCase):
         os.makedirs('dir')
         with open('dir/content.file', 'w') as f:
             f.write('CONTENT')
-        utils.tar('dir', 'tar.file')
+        utils.tar(os.getcwd(), 'dir', 'tar.file')
         shutil.rmtree('dir')
         self.assertTrue(tarfile.is_tarfile('tar.file'))
         with closing(tarfile.open('tar.file', 'r:gz')) as tar:
@@ -176,12 +176,14 @@ class TestUtils(testtools.TestCase):
 
     @venv
     def test_tar_no_permissions(self):
-        e = self.assertRaises(SystemExit, utils.tar, TEST_VENV, '/file')
+        e = self.assertRaises(SystemExit, utils.tar, os.getcwd(), TEST_VENV,
+                              '/file')
         self.assertEqual(e.message, codes.errors['failed_to_create_tar'])
 
     @venv
     def test_tar_missing_source(self):
-        e = self.assertRaises(SystemExit, utils.tar, 'missing', 'file')
+        e = self.assertRaises(SystemExit, utils.tar, os.getcwd(), 'missing',
+                              'file')
         self.assertEqual(e.message, codes.errors['failed_to_create_tar'])
         os.remove('file')
 

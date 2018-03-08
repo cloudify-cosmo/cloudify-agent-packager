@@ -15,6 +15,7 @@ def run(cmd, no_print=False):
 
     :param string cmd: command to execute
     """
+    lgr.info('Running: {0}'.format(cmd))
     p = subprocess.Popen(
         cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     (stdout, stderr) = p.communicate()
@@ -120,7 +121,7 @@ def download_file(url, destination):
                 f.flush()
 
 
-def tar(source, destination):
+def tar(working_dir, source, destination):
     # TODO: solve or depracate..
     # TODO: apparently, it will tar the first child dir of
     # TODO: source, and not the given parent.
@@ -128,7 +129,8 @@ def tar(source, destination):
     #     tar.add(source, arcname=os.path.basename(source))
     # WORKAROUND IMPLEMENTATION
     lgr.info('Creating tar file: {0}'.format(destination))
-    r = run('tar czvf {0} {1}'.format(destination, source), no_print=True)
+    r = run('tar czvf {0} -C {1} {2}'.format(destination, working_dir, source),
+            no_print=False)
     if not r.returncode == 0:
         lgr.error('Failed to create tar file.')
         sys.exit(codes.errors['failed_to_create_tar'])
