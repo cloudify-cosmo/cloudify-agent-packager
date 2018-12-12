@@ -34,7 +34,7 @@ def make_virtualenv(virtualenv_dir, python='/usr/bin/python'):
     :param string virtualenv_dir: path of virtualenv to create
     """
     lgr.debug('virtualenv_dir: {0}'.format(virtualenv_dir))
-    command = 'virtualenv -p {0} {1}'.format(python, virtualenv_dir)
+    command = 'virtualenv --no-download -p {0} {1}'.format(python, virtualenv_dir)
 
     if sys.version_info[:2] == (2, 6):
         # python 2.6 will fail when creating a virtualenv because it will
@@ -46,7 +46,7 @@ def make_virtualenv(virtualenv_dir, python='/usr/bin/python'):
 
     p = run(command)
     if not p.returncode == 0:
-        lgr.error('Could not create venv: {0}'.format(virtualenv_dir))
+        lgr.exception('Could not create venv: {0}'.format(virtualenv_dir))
         sys.exit(codes.errors['could_not_create_virtualenv'])
 
     if sys.version_info[:2] == (2, 6):
