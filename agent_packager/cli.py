@@ -9,7 +9,7 @@ Usage:
 Options:
     -h --help                   Show this screen
     -c --config=<path>          Path to config yaml (defaults to config.yaml)
-    -f --force                  Forces deletion and creation of venv and tar file.
+    -f --force                  Forces deletion and creation of tar file.
     -d --dryrun                 Prints out the modules to be installed without actually installing them.
     -n --no-validation          Does not validate that all modules were installed correctly.
     -v --verbose                verbose level logging

@@ -166,7 +166,7 @@ class TestUtils(testtools.TestCase):
         os.makedirs('dir')
         with open('dir/content.file', 'w') as f:
             f.write('CONTENT')
-        utils.tar('dir', 'tar.file')
+        utils.tar(os.getcwd(), 'dir', 'tar.file')
         shutil.rmtree('dir')
         self.assertTrue(tarfile.is_tarfile('tar.file'))
         with closing(tarfile.open('tar.file', 'r:gz')) as tar:
@@ -176,12 +176,14 @@ class TestUtils(testtools.TestCase):
 
     @venv
     def test_tar_no_permissions(self):
-        e = self.assertRaises(SystemExit, utils.tar, TEST_VENV, '/file')
+        e = self.assertRaises(SystemExit, utils.tar, os.getcwd(), TEST_VENV,
+                              '/file')
         self.assertEqual(e.message, codes.errors['failed_to_create_tar'])
 
     @venv
     def test_tar_missing_source(self):
-        e = self.assertRaises(SystemExit, utils.tar, 'missing', 'file')
+        e = self.assertRaises(SystemExit, utils.tar, os.getcwd(), 'missing',
+                              'file')
         self.assertEqual(e.message, codes.errors['failed_to_create_tar'])
         os.remove('file')
 
@@ -225,36 +227,6 @@ class TestCreate(testtools.TestCase):
             self.assertNotIn(excluded_module, pip_freeze_output)
         shutil.rmtree(TEST_VENV)
 
-    def test_create_agent_package_in_existing_venv_force(self):
-        cli_options = {
-            '--config': CONFIG_FILE,
-            '--force': True,
-            '--dryrun': False,
-            '--no-validation': False,
-            '--verbose': True
-        }
-        utils.make_virtualenv(TEST_VENV)
-        try:
-            cli._run(cli_options)
-        finally:
-            shutil.rmtree(TEST_VENV)
-
-    def test_create_agent_package_in_existing_venv_no_force(self):
-        cli_options = {
-            '--config': CONFIG_FILE,
-            '--force': False,
-            '--dryrun': False,
-            '--no-validation': False,
-            '--verbose': True
-        }
-        utils.make_virtualenv(TEST_VENV)
-        try:
-            e = self.assertRaises(SystemExit, cli._run, cli_options)
-            self.assertEqual(
-                e.message, codes.errors['virtualenv_already_exists'])
-        finally:
-            shutil.rmtree(TEST_VENV)
-
     def test_dryrun(self):
         cli_options = {
             '--config': CONFIG_FILE,
@@ -277,12 +249,6 @@ class TestCreate(testtools.TestCase):
             SystemExit, ap.create, config, None, force=True, verbose=True)
         self.assertEqual(
             e.message, codes.errors['missing_cloudify_agent_config'])
-
-    @venv
-    def test_create_agent_package_existing_venv_no_force(self):
-        e = self.assertRaises(
-            SystemExit, ap.create, None, CONFIG_FILE, verbose=True)
-        self.assertEqual(e.message, codes.errors['virtualenv_already_exists'])
 
     @venv
     def test_create_agent_package_tar_already_exists(self):
@@ -313,7 +279,8 @@ class TestCreate(testtools.TestCase):
             ap.create(config, force=True, verbose=True)
             self.assertTrue(os.path.isfile(archive))
         finally:
-            os.remove(archive)
+            if os.path.exists(archive):
+                os.remove(archive)
             os.environ.pop('VERSION')
             os.environ.pop('PRERELEASE')
             os.environ.pop('BUILD')
