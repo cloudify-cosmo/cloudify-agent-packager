@@ -5,7 +5,7 @@ requirements_file: 'agent_packager/tests/resources/requirements.txt'
 # cloudify_agent_version: 3.1
 cloudify_agent_module: https://github.com/nir0s/cloudify-agent/archive/master.tar.gz
 core_modules:
-    cloudify_plugins_common: https://github.com/cloudify-cosmo/cloudify-plugins-common/archive/3.1.tar.gz
+    cloudify_plugins_common: https://github.com/cloudify-cosmo/cloudify-common/archive/master.tar.gz
     # cloudify_rest_client: https://github.com/cloudify-cosmo/cloudify-rest-client/archive/3.1.tar.gz
 core_plugins:
     cloudify_script_plugin: exclude
