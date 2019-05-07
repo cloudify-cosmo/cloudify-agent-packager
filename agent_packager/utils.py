@@ -34,10 +34,28 @@ def make_virtualenv(virtualenv_dir, python='/usr/bin/python'):
     :param string virtualenv_dir: path of virtualenv to create
     """
     lgr.debug('virtualenv_dir: {0}'.format(virtualenv_dir))
-    p = run('virtualenv -p {0} {1}'.format(python, virtualenv_dir))
+    command = 'virtualenv -p {0} {1}'.format(python, virtualenv_dir)
+
+    if sys.version_info[:2] == (2, 6):
+        # python 2.6 will fail when creating a virtualenv because it will
+        # attempt to install the newest setuptools version which does not
+        # support 2.6. Fall back to not installing setuptools automatically,
+        # but we'll install it separately after creating the venv, with
+        # the last version that did support 2.6.
+        command += ' --no-setuptools'
+
+    p = run(command)
     if not p.returncode == 0:
         lgr.error('Could not create venv: {0}'.format(virtualenv_dir))
         sys.exit(codes.errors['could_not_create_virtualenv'])
+
+    if sys.version_info[:2] == (2, 6):
+        p = run('{0}/bin/pip install setuptools==36.8.0'
+                .format(virtualenv_dir))
+        if not p.returncode == 0:
+            lgr.error('Could not install setuptools into venv: {0}'
+                      .format(virtualenv_dir))
+            sys.exit(codes.errors['could_not_create_virtualenv'])
 
 
 def install_module(module, venv):
