@@ -17,11 +17,15 @@ Options:
 """
 
 from __future__ import absolute_import
+
+import sys
+import logging
 from docopt import docopt
-import agent_packager.logger as logger
+
 import agent_packager.packager as packager
 
-lgr = logger.init()
+logging.basicConfig(stream=sys.stderr, level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
 def ver_check():
@@ -39,15 +43,16 @@ def ver_check():
 def _run(test_options=None):
     version = ver_check()
     options = test_options or docopt(__doc__, version=version)
-    packager.set_global_verbosity_level(options.get('--verbose'))
-    lgr.debug(options)
+    is_verbose = options.get('--verbose')
+    if is_verbose:
+        logging.root.setLevel(logging.DEBUG)
+    logger.debug("Command-line options: %s", str(options))
 
     packager.create(
         config_file=options.get('--config'),
         force=options.get('--force'),
         dryrun=options.get('--dryrun'),
-        no_validate=options.get('--no-validation'),
-        verbose=options.get('--verbose')
+        no_validate=options.get('--no-validation')
         )
 
 def main():
