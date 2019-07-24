@@ -28,7 +28,7 @@ setup(
     },
     install_requires=[
         "docopt==.0.6.1",
-        "pyyaml==3.10",
+        "pyyaml==3.12",
         "virtualenv==15.1.0",
         "requests==2.7.0",
     ],
