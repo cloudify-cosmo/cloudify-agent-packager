@@ -1,4 +1,3 @@
-import logger
 import logging
 import yaml
 import json
@@ -39,22 +38,7 @@ MANDATORY_MODULES = [
 
 DEFAULT_CLOUDIFY_AGENT_URL = 'https://github.com/cloudify-cosmo/cloudify-agent/archive/{0}.tar.gz'  # NOQA
 
-lgr = logger.init()
-verbose_output = False
-
-
-def set_global_verbosity_level(is_verbose_output=False):
-    """Sets the global verbosity level for console and the lgr logger.
-
-    :param bool is_verbose_output: should be output be verbose
-    """
-    global verbose_output
-    # TODO: (IMPRV) only raise exceptions in verbose mode
-    verbose_output = is_verbose_output
-    if verbose_output:
-        lgr.setLevel(logging.DEBUG)
-    else:
-        lgr.setLevel(logging.INFO)
+lgr = logging.getLogger(__name__)
 
 
 def _import_config(config_file=DEFAULT_CONFIG_FILE):
@@ -332,7 +316,7 @@ def _name_archive(distro, release, version, milestone, build):
 
 
 def create(config=None, config_file=None, force=False, dryrun=False,
-           no_validate=False, verbose=True):
+           no_validate=False):
     """Creates an agent package (tar.gz)
 
     This will try to identify the distribution of the host you're running on.
@@ -356,7 +340,6 @@ def create(config=None, config_file=None, force=False, dryrun=False,
     the output file. If omitted, a default path will be given with the
     format `DISTRIBUTION-RELEASE-agent.tar.gz`.
     """
-    set_global_verbosity_level(verbose)
 
     # this will be updated with installed plugins and modules and used
     # to validate the installation
@@ -402,8 +385,6 @@ def create(config=None, config_file=None, force=False, dryrun=False,
     modules = _set_defaults()
     modules = _merge_modules(modules, config)
 
-    if dryrun:
-        set_global_verbosity_level(True)
     lgr.debug('Modules and plugins to install: {0}'.format(json.dumps(
         modules, sort_keys=True, indent=4, separators=(',', ': '))))
     if dryrun:

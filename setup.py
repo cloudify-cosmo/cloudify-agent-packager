@@ -12,10 +12,10 @@ def read(*parts):
 
 setup(
     name='cloudify-agent-packager',
-    version='4.0.2',
+    version='4.0.3',
     url='https://github.com/cloudify-cosmo/cloudify-agent-packager',
-    author='Gigaspaces',
-    author_email='cosmo-admin@gigaspaces.com',
+    author='Cloudify',
+    author_email='hello@cloudify.co',
     license='LICENSE',
     platforms='All',
     description='Creates Cloudify Agent Packages',
