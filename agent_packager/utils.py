@@ -1,11 +1,11 @@
-import codes
-
 import subprocess
-import logger
 import sys
 import requests
 import re
 import os
+
+from . import codes, logger
+
 
 lgr = logger.init()
 
