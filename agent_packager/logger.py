@@ -22,8 +22,8 @@ LOGGER = {
             "formatter": "file",
             "level": "DEBUG",
             "filename": os.path.expanduser("~/.cfyap/cfyap.log"),
-            "maxBytes": "5000000",
-            "backupCount": "20"
+            "maxBytes": 5000000,
+            "backupCount": 20
         },
         "console": {
             "class": "logging.StreamHandler",
