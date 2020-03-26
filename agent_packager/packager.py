@@ -1,4 +1,4 @@
-import logger
+
 import logging
 import yaml
 import json
@@ -7,8 +7,8 @@ import shutil
 import os
 import sys
 
-import utils
-import codes
+from . import codes, logger, utils
+
 
 DEFAULT_CONFIG_FILE = 'config.yaml'
 DEFAULT_OUTPUT_TAR_PATH = '{0}-{1}-agent.tar.gz'

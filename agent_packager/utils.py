@@ -1,11 +1,11 @@
-import codes
-
 import subprocess
-import logger
 import sys
 import requests
 import re
 import os
+
+from . import codes, logger
+
 
 lgr = logger.init()
 
@@ -23,8 +23,8 @@ def run(cmd, no_print=False):
             lgr.debug('stdout: {0}'.format(stdout))
         if len(stderr) > 0:
             lgr.debug('stderr: {0}'.format(stderr))
-    p.stdout = stdout
-    p.strerr = stderr
+    p.stdout = stdout.decode('utf-8', 'replace')
+    p.strerr = stderr.decode('utf-8', 'replace')
     return p
 
 

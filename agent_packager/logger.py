@@ -1,7 +1,7 @@
 import os
 import sys
 import logging
-import dictconfig
+from . import dictconfig
 
 DEFAULT_BASE_LOGGING_LEVEL = logging.INFO
 DEFAULT_VERBOSE_LOGGING_LEVEL = logging.DEBUG
@@ -22,8 +22,8 @@ LOGGER = {
             "formatter": "file",
             "level": "DEBUG",
             "filename": os.path.expanduser("~/.cfyap/cfyap.log"),
-            "maxBytes": "5000000",
-            "backupCount": "20"
+            "maxBytes": 5000000,
+            "backupCount": 20
         },
         "console": {
             "class": "logging.StreamHandler",

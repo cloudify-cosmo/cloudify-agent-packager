@@ -16,23 +16,17 @@ Options:
     --version                   Display current version
 """
 
-from __future__ import absolute_import
 from docopt import docopt
-import agent_packager.logger as logger
-import agent_packager.packager as packager
+import pkg_resources
+
+from . import logger, packager
+
 
 lgr = logger.init()
 
-
 def ver_check():
-    import pkg_resources
     version = None
-    try:
-        version = pkg_resources.get_distribution('agent_packager').version
-    except Exception as e:
-        print(e)
-    finally:
-        del pkg_resources
+    version = pkg_resources.get_distribution('agent_packager').version
     return version
 
 
