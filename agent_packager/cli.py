@@ -26,7 +26,7 @@ lgr = logger.init()
 
 def ver_check():
     version = None
-    version = pkg_resources.get_distribution('agent_packager').version
+    version = pkg_resources.get_distribution('cloudify-agent-packager').version
     return version
 
 
