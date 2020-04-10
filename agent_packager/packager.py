@@ -140,10 +140,16 @@ def _merge_modules(modules, config):
     modules['requirements_file'] = get_option(
         config, 'install', 'requirements_file')
 
-    for name, _empty in config.items('additional_modules'):
-        modules['additional_modules'].append(name)
-    for name, target in config.items('additional_plugins'):
-        modules['additional_plugins'][name] = target
+    try:
+        for name, _empty in config.items('additional_modules'):
+            modules['additional_modules'].append(name)
+    except NoSectionError:
+        pass
+    try:
+        for name, target in config.items('additional_plugins'):
+            modules['additional_plugins'][name] = target
+    except NoSectionError:
+        pass
 
     cloudify_agent_module = get_option(
         config, 'install', 'cloudify_agent_module')
