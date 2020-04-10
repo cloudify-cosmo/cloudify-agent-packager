@@ -19,7 +19,7 @@ setup(
     license='LICENSE',
     platforms='All',
     description='Creates Cloudify Agent Packages',
-    long_description=read('README.rst'),
+    long_description=read('README.md'),
     packages=['agent_packager'],
     entry_points={
         'console_scripts': [
