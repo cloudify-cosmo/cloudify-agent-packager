@@ -1,13 +1,14 @@
+import logging
 import subprocess
 import sys
 import requests
 import re
 import os
 
-from . import codes, logger
+from . import exceptions
 
 
-lgr = logger.init()
+lgr = logging.getLogger()
 
 
 def run(cmd, no_print=False):
@@ -46,16 +47,7 @@ def make_virtualenv(virtualenv_dir, python='/usr/bin/python'):
 
     p = run(command)
     if not p.returncode == 0:
-        lgr.error('Could not create venv: {0}'.format(virtualenv_dir))
-        sys.exit(codes.errors['could_not_create_virtualenv'])
-
-    if sys.version_info[:2] == (2, 6):
-        p = run('{0}/bin/pip install setuptools==36.8.0'
-                .format(virtualenv_dir))
-        if not p.returncode == 0:
-            lgr.error('Could not install setuptools into venv: {0}'
-                      .format(virtualenv_dir))
-            sys.exit(codes.errors['could_not_create_virtualenv'])
+        raise exceptions.VirtualenvCreationError(virtualenv_dir)
 
 
 def install_module(module, venv):
@@ -71,8 +63,7 @@ def install_module(module, venv):
         pip_cmd = '{1}/bin/pip install {0}'.format(module, venv)
     p = run(pip_cmd)
     if not p.returncode == 0:
-        lgr.error('Could not install module: {0}'.format(module))
-        sys.exit(codes.errors['could_not_install_module'])
+        raise exceptions.PipInstallError(module)
 
 
 def install_requirements_file(path, venv):
@@ -85,8 +76,7 @@ def install_requirements_file(path, venv):
     pip_cmd = '{1}/bin/pip install -r{0}'.format(path, venv)
     p = run(pip_cmd)
     if not p.returncode == 0:
-        lgr.error('Could not install from requirements file: {0}'.format(path))
-        sys.exit(codes.errors['could_not_install_from_requirements_file'])
+        raise exceptions.PipInstallError(path)
 
 
 def uninstall_module(module, venv):
@@ -99,8 +89,7 @@ def uninstall_module(module, venv):
     pip_cmd = '{1}/bin/pip uninstall {0} -y'.format(module, venv)
     p = run(pip_cmd)
     if not p.returncode == 0:
-        lgr.error('Could not uninstall module: {0}'.format(module))
-        sys.exit(codes.errors['could_not_uninstall_module'])
+        raise exceptions.PipUninstallError(module)
 
 
 def get_installed(venv):
@@ -129,8 +118,7 @@ def download_file(url, destination):
     destination = destination if destination else url.split('/')[-1]
     r = requests.get(url, stream=True)
     if not r.status_code == 200:
-        lgr.error('Could not download file: {0}'.format(url))
-        sys.exit(codes.errors['could_not_download_file'])
+        raise exceptions.DownloadError('{0}: {1}'.format(url, r.status_code))
     with open(destination, 'wb') as f:
         for chunk in r.iter_content(chunk_size=1024):
             if chunk:  # filter out keep-alive new chunks
@@ -146,10 +134,11 @@ def tar(source, destination):
     #     tar.add(source, arcname=os.path.basename(source))
     # WORKAROUND IMPLEMENTATION
     lgr.info('Creating tar file: {0}'.format(destination))
-    r = run('tar czvf {0} {1}'.format(destination, source), no_print=True)
+    command = 'tar czvf {0} {1}'.format(destination, source)
+    r = run(command, no_print=True)
     if not r.returncode == 0:
-        lgr.error('Failed to create tar file.')
-        sys.exit(codes.errors['failed_to_create_tar'])
+        raise exceptions.TarCreateError(
+            '{0} returned {1}'.format(command, r.returncode))
 
 
 def get_env_bin_path(env_path):

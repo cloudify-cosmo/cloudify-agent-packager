@@ -12,14 +12,14 @@ def read(*parts):
 
 setup(
     name='cloudify-agent-packager',
-    version='4.0.2',
+    version='5.0.0',
     url='https://github.com/cloudify-cosmo/cloudify-agent-packager',
-    author='Gigaspaces',
-    author_email='cosmo-admin@gigaspaces.com',
+    author='Cloudify',
+    author_email='cosmo-admin@cloudify.co',
     license='LICENSE',
     platforms='All',
     description='Creates Cloudify Agent Packages',
-    long_description=read('README.rst'),
+    long_description=read('README.md'),
     packages=['agent_packager'],
     entry_points={
         'console_scripts': [
@@ -28,7 +28,6 @@ setup(
     },
     install_requires=[
         "docopt==.0.6.1",
-        "pyyaml==3.10",
         "virtualenv==15.1.0",
         "requests==2.7.0",
     ],

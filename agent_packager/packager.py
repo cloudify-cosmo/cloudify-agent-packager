@@ -1,45 +1,33 @@
 
 import logging
-import yaml
 import json
 import platform
 import shutil
 import os
-import sys
+from . import exceptions, utils
 
-from . import codes, logger, utils
+try:
+    from configparser import (
+        RawConfigParser,
+        Error as ConfigParserError,
+        NoOptionError,
+        NoSectionError)
+except ImportError:
+    # py2
+    from ConfigParser import (
+        RawConfigParser,
+        Error as ConfigParserError,
+        NoOptionError,
+        NoSectionError)
 
 
 DEFAULT_CONFIG_FILE = 'config.yaml'
 DEFAULT_OUTPUT_TAR_PATH = '{0}-{1}-agent.tar.gz'
 DEFAULT_VENV_PATH = 'cloudify/env'
 
-PREINSTALL_MODULES = [
-    'setuptools==36.8.0'
-]
-
-EXTERNAL_MODULES = [
-    'celery==3.1.17'
-]
-
-CORE_MODULES_LIST = [
-    'cloudify_rest_client',
-    'cloudify_plugins_common',
-]
-
-CORE_PLUGINS_LIST = [
-    'cloudify_script_plugin',
-    'cloudify_diamond_plugin',
-]
-
-MANDATORY_MODULES = [
-    'cloudify_rest_client',
-    'cloudify_plugins_common',
-]
-
 DEFAULT_CLOUDIFY_AGENT_URL = 'https://github.com/cloudify-cosmo/cloudify-agent/archive/{0}.tar.gz'  # NOQA
 
-lgr = logger.init()
+lgr = logging.getLogger()
 verbose_output = False
 
 
@@ -49,7 +37,6 @@ def set_global_verbosity_level(is_verbose_output=False):
     :param bool is_verbose_output: should be output be verbose
     """
     global verbose_output
-    # TODO: (IMPRV) only raise exceptions in verbose mode
     verbose_output = is_verbose_output
     if verbose_output:
         lgr.setLevel(logging.DEBUG)
@@ -57,23 +44,37 @@ def set_global_verbosity_level(is_verbose_output=False):
         lgr.setLevel(logging.INFO)
 
 
-def _import_config(config_file=DEFAULT_CONFIG_FILE):
+def get_option(config_get, *args, **kwargs):
+    """Get an option from a configparser, or None if it doesn't exist.
+
+    :param config_get: a method on a configparser, eg .get or .getboolean etc,
+        or the configparser itself, in which case .get is used
+    """
+    if not callable(config_get):
+        config_get = config_get.get
+    try:
+        return config_get(*args, **kwargs)
+    except (NoOptionError, NoSectionError):
+        return None
+
+
+def _import_config(config_file=None):
     """Returns a configuration object
 
     :param string config_file: path to config file
     """
+    if not config_file:
+        config_file = DEFAULT_CONFIG_FILE
     lgr.debug('Importing config: {0}...'.format(config_file))
+    config = RawConfigParser(allow_no_value=True)
+    if not os.path.isfile(config_file):
+        raise exceptions.ConfigFileError(
+            'No such file: {0}'.format(config_file))
     try:
-        with open(config_file, 'r') as c:
-            return yaml.safe_load(c.read())
-    except IOError as ex:
-        lgr.error(str(ex))
-        lgr.error('Cannot access config file')
-        sys.exit(codes.errors['could_not_access_config_file'])
-    except (yaml.parser.ParserError, yaml.scanner.ScannerError) as ex:
-        lgr.error(str(ex))
-        lgr.error('Invalid yaml file')
-        sys.exit(codes.errors['invalid_yaml_file'])
+        config.read(config_file)
+    except ConfigParserError as e:
+        raise exceptions.ConfigFileError(e)
+    return config
 
 
 def _make_venv(venv, python, force):
@@ -91,10 +92,10 @@ def _make_venv(venv, python, force):
         if force:
             lgr.info('Installing within existing virtualenv: {0}'.format(venv))
         else:
-            lgr.error('Virtualenv already exists at {0}. '
-                      'You can use the -f flag to install within the '
-                      'existing virtualenv.'.format(venv))
-            sys.exit(codes.errors['virtualenv_already_exists'])
+            raise exceptions.VirtualenvCreationError(
+                'Virtualenv already exists at {0}. '
+                'You can use the -f flag to install within the '
+                'existing virtualenv.'.format(venv))
     else:
         lgr.debug('Creating virtualenv: {0}'.format(venv))
         utils.make_virtualenv(venv, python)
@@ -114,20 +115,17 @@ def _handle_output_file(destination_tar, force):
         lgr.info('Removing previous agent package...')
         os.remove(destination_tar)
     if os.path.exists(destination_tar):
-            lgr.error('Destination tar already exists: {0}'.format(
-                destination_tar))
-            sys.exit(codes.errors['tar_already_exists'])
+        raise exceptions.TarCreateError(
+            '{0} already exists'.format(destination_tar))
 
 
 def _set_defaults():
     """sets the default modules dictionary
     """
     modules = {}
-    modules['core_modules'] = {}
-    modules['core_plugins'] = {}
     modules['additional_modules'] = []
     modules['additional_plugins'] = {}
-    modules['agent'] = ""
+    modules['agent'] = ''
     return modules
 
 
@@ -139,26 +137,29 @@ def _merge_modules(modules, config):
     """
     lgr.debug('Merging default modules with config...')
 
-    if 'requirements_file' in config:
-        modules['requirements_file'] = config['requirements_file']
+    modules['requirements_file'] = get_option(
+        config, 'install', 'requirements_file')
 
-    modules['core_modules'].update(config.get('core_modules', {}))
-    modules['core_plugins'].update(config.get('core_plugins', {}))
+    for name, _empty in config.items('additional_modules'):
+        modules['additional_modules'].append(name)
+    for name, target in config.items('additional_plugins'):
+        modules['additional_plugins'][name] = target
 
-    additional_modules = config.get('additional_modules', [])
-    for additional_module in additional_modules:
-        modules['additional_modules'].append(additional_module)
-    modules['additional_plugins'].update(config.get('additional_plugins', {}))
+    cloudify_agent_module = get_option(
+        config, 'install', 'cloudify_agent_module')
+    cloudify_agent_version = get_option(
+        config, 'install', 'cloudify_agent_version')
 
-    if 'cloudify_agent_module' in config:
-        modules['agent'] = config['cloudify_agent_module']
-    elif 'cloudify_agent_version' in config:
+    if cloudify_agent_module:
+        modules['agent'] = cloudify_agent_module
+    elif cloudify_agent_version:
         modules['agent'] = DEFAULT_CLOUDIFY_AGENT_URL.format(
-            config['cloudify_agent_version'])
+            cloudify_agent_version)
     else:
-        lgr.error('Either `cloudify_agent_module` or `cloudify_agent_version` '
-                  'must be specified in the yaml configuration file.')
-        sys.exit(codes.errors['missing_cloudify_agent_config'])
+        raise exceptions.ConfigFileError(
+            'Either `cloudify_agent_module` or `cloudify_agent_version` '
+            'must be specified in the configuration file.'
+        )
     return modules
 
 
@@ -182,9 +183,9 @@ def _validate(modules, venv):
             failed.append(module_name)
 
     if failed:
-        lgr.error('Validation failed. some of the requested modules were not '
-                  'installed.')
-        sys.exit(codes.errors['installation_validation_failed'])
+        raise exceptions.PipInstallError(
+            'some of the requested modules were not installed: {0}'
+            .format(failed))
 
 
 class ModuleInstaller():
@@ -202,45 +203,6 @@ class ModuleInstaller():
         for module in modules:
             lgr.info('Installing module {0}'.format(module))
             utils.install_module(module, self.venv)
-
-    def install_core_modules(self):
-        lgr.info('Installing core modules...')
-        core = self.modules['core_modules']
-        # we must run through the CORE_MODULES_LIST so that dependencies are
-        # installed in order
-        for module in CORE_MODULES_LIST:
-            module_name = get_module_name(module)
-            if module in core:
-                lgr.info('Installing module {0} from {1}.'.format(
-                    module_name, core[module]))
-                utils.install_module(core[module], self.venv)
-                self.final_set['modules'].append(module_name)
-            elif module not in core and module in MANDATORY_MODULES:
-                lgr.info('Module {0} will be installed as a part of '
-                         'cloudify-agent (This is a mandatory module).'.format(
-                             module_name))
-            elif module not in core:
-                lgr.info('Module {0} will be installed as a part of '
-                         'cloudify-agent (if applicable).'.format(module_name))
-
-    def install_core_plugins(self):
-        lgr.info('Installing core plugins...')
-        core = self.modules['core_plugins']
-
-        for module in CORE_PLUGINS_LIST:
-            module_name = get_module_name(module)
-            if module in core and core[module] == 'exclude':
-                lgr.info('Module {0} is excluded. '
-                         'it will not be a part of the agent.'.format(
-                             module_name))
-            elif core.get(module):
-                lgr.info('Installing module {0} from {1}.'.format(
-                    module_name, core[module]))
-                utils.install_module(core[module], self.venv)
-                self.final_set['plugins'].append(module_name)
-            elif module not in core:
-                lgr.info('Module {0} will be installed as a part of '
-                         'cloudify-agent (if applicable).'.format(module_name))
 
     def install_additional_plugins(self):
         lgr.info('Installing additional plugins...')
@@ -269,36 +231,15 @@ def _install(modules, venv, final_set):
     """
     installer = ModuleInstaller(modules, venv, final_set)
     lgr.info('Installing modules required by setup...')
-    installer.install_modules(PREINSTALL_MODULES)
+    installer.install_modules(['setuptools==36.8.0'])
     lgr.info('Installing module from requirements file...')
     installer.install_requirements_file()
     lgr.info('Installing external modules...')
-    installer.install_modules(EXTERNAL_MODULES)
-    installer.install_core_modules()
-    installer.install_core_plugins()
     lgr.info('Installing additional modules...')
     installer.install_modules(modules['additional_modules'])
     installer.install_additional_plugins()
     installer.install_agent()
     return installer.final_set
-
-
-def _uninstall_excluded(modules, venv):
-    """Uninstalls excluded modules.
-    Since there is no way to exclude requirements from a module;
-    and modules are installed from cloudify-agent's requirements;
-    if any modules are chosen to be excluded, they will be uninstalled.
-    :param dict modules: dict containing core and additional
-    modules and the cloudify-agent module.
-    :param string venv: path of virtualenv to install in.
-    """
-    lgr.info('Uninstalling excluded plugins (if any)...')
-    for module in CORE_PLUGINS_LIST:
-        module_name = get_module_name(module)
-        if modules['core_plugins'].get(module) == 'exclude' and \
-                utils.check_installed(module_name, venv):
-            lgr.info('Uninstalling {0}'.format(module_name))
-            utils.uninstall_module(module_name, venv)
 
 
 def get_module_name(module):
@@ -362,32 +303,37 @@ def create(config=None, config_file=None, force=False, dryrun=False,
     # to validate the installation
     final_set = {'modules': [], 'plugins': []}
     if not config:
-        config = _import_config(config_file) if config_file else \
-            _import_config()
-        config = {} if not config else config
+        config = _import_config(config_file)
 
-    name_params = {}
-    try:
-        (distro, release) = get_os_props()
-        name_params['distro'] = config.get('distribution', distro)
-        name_params['release'] = config.get('release', release)
-        name_params['version'] = config.get(
-            'version', os.environ.get('VERSION', None))
-        name_params['milestone'] = config.get(
-            'milestone', os.environ.get('PRERELEASE', None))
-        name_params['build'] = config.get(
-            'build', os.environ.get('BUILD', None))
-    except Exception as ex:
-        lgr.error(
-            'Distribution not found in configuration '
-            'and could not be retrieved automatically. '
-            'please specify the distribution in the yaml. '
-            '({0})'.format(ex.message))
-        sys.exit(codes.errors['could_not_identify_distribution'])
-    python = config.get('python_path', '/usr/bin/python')
+    name_params = {
+        'distro': get_option(config, 'system', 'distribution'),
+        'release': get_option(config, 'system', 'release'),
+        'version': (get_option(config, 'output', 'version') or
+                    os.environ.get('VERSION', None)),
+        'milestone': (get_option(config, 'output', 'milestone') or
+                      os.environ.get('PRERELEASE', None)),
+        'build': (get_option(config, 'output', 'build') or
+                  os.environ.get('BUILD', None)),
+    }
+    if not name_params['distro'] or not name_params['release']:
+        try:
+            distro, release = get_os_props()
+        except Exception as ex:
+            raise exceptions.AgentPackagerError(
+                'Distribution not found in configuration '
+                'and could not be retrieved automatically. '
+                'please specify the distribution in the config.file. '
+                '({0})'.format(ex))
+        name_params.update({
+            'distro': distro,
+            'release': release
+        })
+
+    python = get_option(config, 'system', 'python_path') or '/usr/bin/python'
     venv = DEFAULT_VENV_PATH
     venv_already_exists = utils.is_virtualenv(venv)
-    destination_tar = config.get('output_tar', _name_archive(**name_params))
+    destination_tar = get_option(config, 'output', 'tar',) or \
+        _name_archive(**name_params)
 
     lgr.debug('Distibution is: {0}'.format(name_params['distro']))
     lgr.debug('Distribution release is: {0}'.format(name_params['release']))
@@ -408,10 +354,9 @@ def create(config=None, config_file=None, force=False, dryrun=False,
         modules, sort_keys=True, indent=4, separators=(',', ': '))))
     if dryrun:
         lgr.info('Dryrun complete')
-        sys.exit(codes.notifications['dryrun_complete'])
+        return
 
     final_set = _install(modules, venv, final_set)
-    _uninstall_excluded(modules, venv)
     if not no_validate:
         _validate(final_set, venv)
     utils.tar(venv, destination_tar)
@@ -419,14 +364,10 @@ def create(config=None, config_file=None, force=False, dryrun=False,
     lgr.info('The following modules and plugins were installed '
              'in the agent:\n{0}'.format(utils.get_installed(venv)))
 
-    # if keep_virtualenv is explicitly specified to be false, the virtualenv
-    # will not be deleted.
-    # if keep_virtualenv is not in the config but the virtualenv already
-    # existed, it will not be deleted.
-    if ('keep_virtualenv' in config and not config['keep_virtualenv']) \
-            or ('keep_virtualenv' not in config and not venv_already_exists):
+    keep_virtualenv = get_option(
+        config.getboolean, 'output', 'keep_virtualenv') or False
+    if not keep_virtualenv and not venv_already_exists:
         lgr.info('Removing origin virtualenv...')
         shutil.rmtree(venv)
 
-    # duh!
     lgr.info('Process complete!')
