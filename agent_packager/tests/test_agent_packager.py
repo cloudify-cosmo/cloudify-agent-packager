@@ -19,18 +19,16 @@ import agent_packager.utils as utils
 import agent_packager.codes as codes
 from requests import ConnectionError
 
-from contextlib import closing
-from testfixtures import LogCapture
+import pytest
 import logging
 import tarfile
-import testtools
 import os
 import shutil
-from functools import wraps
 
 
 TEST_RESOURCES_DIR = 'agent_packager/tests/resources/'
 CONFIG_FILE = os.path.join(TEST_RESOURCES_DIR, 'config_file.yaml')
+TARGET_PACKAGE = 'Ubuntu-trusty-agent.tar.gz'  # same as in the config file
 BAD_CONFIG_FILE = os.path.join(TEST_RESOURCES_DIR, 'bad_config_file.yaml')
 EMPTY_CONFIG_FILE = os.path.join(TEST_RESOURCES_DIR, 'empty_config_file.yaml')
 BASE_DIR = 'cloudify'
@@ -41,289 +39,299 @@ MANAGER = 'https://github.com/cloudify-cosmo/cloudify-manager/archive/master.tar
 MOCK_MODULE = os.path.join(TEST_RESOURCES_DIR, 'mock-module')
 
 
-def venv(func):
-    @wraps(func)
-    def execution_handler(*args, **kwargs):
-        try:
-            shutil.rmtree(TEST_VENV)
-        except:
-            pass
-        utils.make_virtualenv(TEST_VENV)
-        func(*args, **kwargs)
+@pytest.fixture
+def venv():
+    shutil.rmtree(TEST_VENV, ignore_errors=True)
+    utils.make_virtualenv(TEST_VENV)
+    try:
+        yield
+    finally:
         shutil.rmtree(TEST_VENV)
-    return execution_handler
 
 
-class TestUtils(testtools.TestCase):
+def test_set_global_verbosity_level(caplog):
+    lgr = logging.getLogger()
 
-    def test_set_global_verbosity_level(self):
-        lgr = logging.getLogger()
+    ap.set_global_verbosity_level(is_verbose_output=False)
+    lgr.debug('TEST_LOG')
+    assert not caplog.records
+    lgr.info('TEST_LOG')
+    assert caplog.record_tuples == [('root', logging.INFO, 'TEST_LOG')]
 
-        with LogCapture() as l:
-            ap.set_global_verbosity_level(is_verbose_output=False)
-            lgr.debug('TEST_LOGGER_OUTPUT')
-            l.check()
-            lgr.info('TEST_LOGGER_OUTPUT')
-            l.check(('root', 'INFO', 'TEST_LOGGER_OUTPUT'))
+    caplog.clear()
 
-            ap.set_global_verbosity_level(is_verbose_output=True)
-            lgr.debug('TEST_LOGGER_OUTPUT')
-            l.check(
-                ('root', 'INFO', 'TEST_LOGGER_OUTPUT'),
-                ('root', 'DEBUG', 'TEST_LOGGER_OUTPUT'))
-
-    def test_import_config_file(self):
-        outcome = ap._import_config(CONFIG_FILE)
-        self.assertEquals(type(outcome), dict)
-        self.assertIn('distribution', outcome.keys())
-
-    def test_fail_import_config_file(self):
-        e = self.assertRaises(SystemExit, ap._import_config, '')
-        self.assertEqual(
-            codes.errors['could_not_access_config_file'], e.message)
-
-    def test_import_bad_config_file_mapping(self):
-        e = self.assertRaises(SystemExit, ap._import_config, BAD_CONFIG_FILE)
-        self.assertEqual(codes.errors['invalid_yaml_file'], e.message)
-
-    def test_run(self):
-        p = utils.run('uname')
-        self.assertEqual(0, p.returncode)
-
-    def test_run_bad_command(self):
-        p = utils.run('suname')
-        self.assertEqual(127, p.returncode)
-
-    @venv
-    def test_create_virtualenv(self):
-        if not os.path.exists('{0}/bin/python'.format(TEST_VENV)):
-            raise Exception('venv not created')
-
-    def test_fail_create_virtualenv_bad_dir(self):
-        e = self.assertRaises(
-            SystemExit, utils.make_virtualenv, '/' + TEST_VENV)
-        self.assertEqual(
-            codes.errors['could_not_create_virtualenv'], e.message)
-
-    def test_fail_create_virtualenv_missing_python(self):
-        e = self.assertRaises(
-            SystemExit, utils.make_virtualenv, TEST_VENV,
-            '/usr/bin/missing_python')
-        self.assertEqual(
-            codes.errors['could_not_create_virtualenv'], e.message)
-
-    @venv
-    def test_install_module(self):
-        utils.install_module(TEST_MODULE, TEST_VENV)
-        pip_freeze_output = utils.get_installed(TEST_VENV).lower()
-        self.assertIn(TEST_MODULE, pip_freeze_output)
-
-    @venv
-    def test_install_nonexisting_module(self):
-        e = self.assertRaises(
-            SystemExit, utils.install_module, 'BLAH!!', TEST_VENV)
-        self.assertEqual(codes.errors['could_not_install_module'], e.message)
-
-    def test_install_module_nonexisting_venv(self):
-        e = self.assertRaises(
-            SystemExit, utils.install_module, TEST_MODULE, 'BLAH!!')
-        self.assertEqual(codes.errors['could_not_install_module'], e.message)
-
-    def test_download_file(self):
-        utils.download_file(TEST_FILE, 'file')
-        if not os.path.isfile('file'):
-            raise Exception('file not downloaded')
-        os.remove('file')
-
-    def test_download_file_missing(self):
-        e = self.assertRaises(
-            SystemExit, utils.download_file,
-            'http://www.google.com/x.tar.gz', 'file')
-        self.assertEqual(
-            codes.errors['could_not_download_file'], e.message)
-
-    def test_download_bad_url(self):
-        e = self.assertRaises(
-            Exception, utils.download_file, 'something', 'file')
-        self.assertIn('Invalid URL', e.message)
-
-    def test_download_connection_failed(self):
-        e = self.assertRaises(
-            ConnectionError, utils.download_file, 'http://something', 'file')
-        self.assertIn('Connection aborted', str(e))
-
-    def test_download_missing_path(self):
-        e = self.assertRaises(
-            IOError, utils.download_file, TEST_FILE, 'x/file')
-        self.assertIn('No such file or directory', e)
-
-    def test_download_no_permissions(self):
-        e = self.assertRaises(IOError, utils.download_file, TEST_FILE, '/file')
-        self.assertIn('Permission denied', e)
-
-    def test_tar(self):
-        os.makedirs('dir')
-        with open('dir/content.file', 'w') as f:
-            f.write('CONTENT')
-        utils.tar('dir', 'tar.file')
-        shutil.rmtree('dir')
-        self.assertTrue(tarfile.is_tarfile('tar.file'))
-        with closing(tarfile.open('tar.file', 'r:gz')) as tar:
-            members = tar.getnames()
-            self.assertIn('dir/content.file', members)
-        os.remove('tar.file')
-
-    @venv
-    def test_tar_no_permissions(self):
-        e = self.assertRaises(SystemExit, utils.tar, TEST_VENV, '/file')
-        self.assertEqual(e.message, codes.errors['failed_to_create_tar'])
-
-    @venv
-    def test_tar_missing_source(self):
-        e = self.assertRaises(SystemExit, utils.tar, 'missing', 'file')
-        self.assertEqual(e.message, codes.errors['failed_to_create_tar'])
-        os.remove('file')
+    ap.set_global_verbosity_level(is_verbose_output=True)
+    lgr.debug('TEST_LOG')
+    assert caplog.record_tuples == [('root', logging.DEBUG, 'TEST_LOG')]
 
 
-class TestCreate(testtools.TestCase):
+def test_import_config_file():
+    outcome = ap._import_config(CONFIG_FILE)
+    assert isinstance(outcome, dict)
+    assert 'distribution' in outcome
 
-    def test_create_agent_package(self):
-        cli_options = {
-            '--config': CONFIG_FILE,
-            '--force': True,
-            '--dryrun': False,
-            '--no-validation': False,
-            '--verbose': True
-        }
-        required_modules = [
-            'cloudify-plugins-common',
-            'cloudify-rest-client',
-            'cloudify-agent',
-            'pyyaml',
-            'xmltodict'
-        ]
-        config = ap._import_config(CONFIG_FILE)
+
+def test_fail_import_config_file():
+    with pytest.raises(
+            SystemExit,
+            match=str(codes.errors['could_not_access_config_file'])):
+        ap._import_config('')
+
+
+def test_import_bad_config_file_mapping():
+    with pytest.raises(
+            SystemExit,
+            match=str(codes.errors['invalid_yaml_file'])):
+        ap._import_config(BAD_CONFIG_FILE)
+
+
+def test_run():
+    p = utils.run('uname')
+    assert p.returncode == 0
+
+
+def test_run_bad_command():
+    p = utils.run('suname')
+    assert p.returncode == 127
+
+
+def test_create_virtualenv(venv):
+    assert os.path.exists('{0}/bin/python'.format(TEST_VENV))
+
+
+def test_fail_create_virtualenv_bad_dir():
+    with pytest.raises(
+            SystemExit,
+            match=str(codes.errors['could_not_create_virtualenv'])):
+        utils.make_virtualenv('/' + TEST_VENV)
+
+
+def test_fail_create_virtualenv_missing_python():
+    with pytest.raises(
+            SystemExit,
+            match=str(codes.errors['could_not_create_virtualenv'])):
+        utils.make_virtualenv(TEST_VENV, '/usr/bin/missing_python')
+
+
+def test_install_module(venv):
+    utils.install_module(TEST_MODULE, TEST_VENV)
+    pip_freeze_output = utils.get_installed(TEST_VENV).lower()
+    assert TEST_MODULE in pip_freeze_output
+
+
+def test_install_nonexisting_module(venv):
+    with pytest.raises(
+            SystemExit,
+            match=str(codes.errors['could_not_install_module'])):
+        utils.install_module('BLAH!!', TEST_VENV)
+
+
+def test_install_module_nonexisting_venv():
+    with pytest.raises(
+            SystemExit,
+            match=str(codes.errors['could_not_install_module'])):
+        utils.install_module(TEST_MODULE, 'BLAH!!')
+
+
+def test_download_file():
+    utils.download_file(TEST_FILE, 'file')
+    assert os.path.isfile('file')
+    os.remove('file')
+
+
+def test_download_bad_url():
+    with pytest.raises(Exception, match='Invalid URL'):
+        utils.download_file('something', 'file')
+
+
+def test_download_connection_failed():
+    with pytest.raises(ConnectionError):
+        utils.download_file('http://nonexistent.test', 'file')
+
+
+def test_download_missing_path():
+    with pytest.raises(IOError):
+        utils.download_file(TEST_FILE, 'x/file')
+
+
+def test_download_no_permissions():
+    with pytest.raises(IOError):
+        utils.download_file(TEST_FILE, '/file')
+
+
+def test_tar():
+    os.makedirs('dir')
+    with open('dir/content.file', 'w') as f:
+        f.write('CONTENT')
+    utils.tar('dir', 'tar.file')
+    shutil.rmtree('dir')
+    assert tarfile.is_tarfile('tar.file')
+    with tarfile.open('tar.file', 'r:gz') as tar:
+        members = tar.getnames()
+        assert 'dir/content.file' in members
+    os.remove('tar.file')
+
+
+def test_tar_no_permissions(venv):
+    with pytest.raises(
+            SystemExit,
+            match=str(codes.errors['failed_to_create_tar'])):
+        utils.tar(TEST_VENV, '/file')
+
+
+def test_tar_missing_source():
+    with pytest.raises(
+            SystemExit,
+            match=str(codes.errors['failed_to_create_tar'])):
+        utils.tar('missing', 'file')
+    os.remove('file')
+
+
+def test_create_agent_package():
+    cli_options = {
+        '--config': CONFIG_FILE,
+        '--force': True,
+        '--dryrun': False,
+        '--no-validation': False,
+        '--verbose': True
+    }
+    required_modules = [
+        'cloudify-plugins-common',
+        'cloudify-rest-client',
+        'cloudify-agent',
+        'pyyaml',
+    ]
+    config = ap._import_config(CONFIG_FILE)
+    cli._run(cli_options)
+    if os.path.isdir(TEST_VENV):
+        shutil.rmtree(TEST_VENV)
+    os.makedirs(TEST_VENV)
+    utils.run('tar -xzvf {0} -C {1} --strip-components=1'.format(
+        config['output_tar'], BASE_DIR))
+    os.remove(config['output_tar'])
+    assert os.path.isdir(TEST_VENV)
+    pip_freeze_output = utils.get_installed(TEST_VENV).lower()
+    for required_module in required_modules:
+        assert required_module in pip_freeze_output
+    shutil.rmtree(TEST_VENV)
+
+
+def test_create_agent_package_in_existing_venv_force():
+    cli_options = {
+        '--config': CONFIG_FILE,
+        '--force': True,
+        '--dryrun': False,
+        '--no-validation': False,
+        '--verbose': True
+    }
+    utils.make_virtualenv(TEST_VENV)
+    try:
         cli._run(cli_options)
-        if os.path.isdir(TEST_VENV):
-            shutil.rmtree(TEST_VENV)
-        os.makedirs(TEST_VENV)
-        utils.run('tar -xzvf {0} -C {1} --strip-components=1'.format(
-            config['output_tar'], BASE_DIR))
-        os.remove(config['output_tar'])
-        self.assertTrue(os.path.isdir(TEST_VENV))
-        pip_freeze_output = utils.get_installed(
-            TEST_VENV).lower()
-        for required_module in required_modules:
-            self.assertIn(required_module, pip_freeze_output)
+    finally:
         shutil.rmtree(TEST_VENV)
+        os.remove(TARGET_PACKAGE)
 
-    def test_create_agent_package_in_existing_venv_force(self):
-        cli_options = {
-            '--config': CONFIG_FILE,
-            '--force': True,
-            '--dryrun': False,
-            '--no-validation': False,
-            '--verbose': True
-        }
-        utils.make_virtualenv(TEST_VENV)
-        try:
+
+def test_create_agent_package_in_existing_venv_no_force():
+    cli_options = {
+        '--config': CONFIG_FILE,
+        '--force': False,
+        '--dryrun': False,
+        '--no-validation': False,
+        '--verbose': True
+    }
+    utils.make_virtualenv(TEST_VENV)
+    try:
+        with pytest.raises(
+                SystemExit,
+                match=str(codes.errors['virtualenv_already_exists'])):
             cli._run(cli_options)
-        finally:
-            shutil.rmtree(TEST_VENV)
-
-    def test_create_agent_package_in_existing_venv_no_force(self):
-        cli_options = {
-            '--config': CONFIG_FILE,
-            '--force': False,
-            '--dryrun': False,
-            '--no-validation': False,
-            '--verbose': True
-        }
-        utils.make_virtualenv(TEST_VENV)
-        try:
-            e = self.assertRaises(SystemExit, cli._run, cli_options)
-            self.assertEqual(
-                e.message, codes.errors['virtualenv_already_exists'])
-        finally:
-            shutil.rmtree(TEST_VENV)
-
-    def test_dryrun(self):
-        cli_options = {
-            '--config': CONFIG_FILE,
-            '--force': False,
-            '--dryrun': True,
-            '--no-validation': False,
-            '--verbose': True
-        }
-        with LogCapture(level=logging.INFO) as l:
-            e = self.assertRaises(SystemExit, cli._run, cli_options)
-            l.check(('user', 'INFO', 'Dryrun complete'))
-        self.assertEqual(codes.notifications['dryrun_complete'], e.message)
-
-    @venv
-    def test_create_agent_package_no_cloudify_agent_configured(self):
-        config = ap._import_config(CONFIG_FILE)
-        del config['cloudify_agent_module']
-
-        e = self.assertRaises(
-            SystemExit, ap.create, config, None, force=True, verbose=True)
-        self.assertEqual(
-            e.message, codes.errors['missing_cloudify_agent_config'])
-
-    @venv
-    def test_create_agent_package_existing_venv_no_force(self):
-        e = self.assertRaises(
-            SystemExit, ap.create, None, CONFIG_FILE, verbose=True)
-        self.assertEqual(e.message, codes.errors['virtualenv_already_exists'])
-
-    @venv
-    def test_create_agent_package_tar_already_exists(self):
-        config = ap._import_config(CONFIG_FILE)
+    finally:
         shutil.rmtree(TEST_VENV)
-        with open(config['output_tar'], 'w') as a:
-            a.write('CONTENT')
-        e = self.assertRaises(
-            SystemExit, ap.create, None, CONFIG_FILE, verbose=True)
-        self.assertEqual(e.message, codes.errors['tar_already_exists'])
-        os.remove(config['output_tar'])
 
-    @venv
-    def test_create_agent_package_with_version_info(self):
-        distro = 'Ubuntu'
-        release = 'trusty'
-        os.environ['VERSION'] = '3.3.0'
-        os.environ['PRERELEASE'] = 'm4'
-        os.environ['BUILD'] = '666'
-        config = ap._import_config(CONFIG_FILE)
-        config.pop('output_tar')
-        archive = ap._name_archive(
-            distro, release,
-            os.environ['VERSION'],
-            os.environ['PRERELEASE'],
-            os.environ['BUILD'])
-        try:
-            ap.create(config, force=True, verbose=True)
-            self.assertTrue(os.path.isfile(archive))
-        finally:
-            os.remove(archive)
-            os.environ.pop('VERSION')
-            os.environ.pop('PRERELEASE')
-            os.environ.pop('BUILD')
 
-    def test_naming(self):
-        distro = 'Ubuntu'
-        release = 'trusty'
-        version = '3.3.0'
-        milestone = 'm4'
-        build = '666'
-        archive = ap._name_archive(distro, release, version, milestone, build)
-        self.assertEquals(archive, 'Ubuntu-trusty-agent_3.3.0-m4-b666.tar.gz')
+def test_dryrun(caplog):
+    cli_options = {
+        '--config': CONFIG_FILE,
+        '--force': False,
+        '--dryrun': True,
+        '--no-validation': False,
+        '--verbose': True
+    }
+    with pytest.raises(
+            SystemExit,
+            match=str(codes.notifications['dryrun_complete'])):
+        cli._run(cli_options)
+    assert ('root', logging.INFO, 'Dryrun complete') in caplog.record_tuples
 
-    def test_naming_no_version_info(self):
-        distro = 'Ubuntu'
-        release = 'trusty'
-        version = None
-        milestone = None
-        build = None
-        archive = ap._name_archive(distro, release, version, milestone, build)
-        self.assertEquals(archive, 'Ubuntu-trusty-agent.tar.gz')
+
+def test_create_agent_package_no_cloudify_agent_configured(venv):
+    config = ap._import_config(CONFIG_FILE)
+    del config['cloudify_agent_module']
+
+    with pytest.raises(
+            SystemExit,
+            match=str(codes.errors['missing_cloudify_agent_config'])):
+        ap.create(config, None, force=True, verbose=True)
+
+
+def test_create_agent_package_existing_venv_no_force(venv):
+    with pytest.raises(
+            SystemExit,
+            match=str(codes.errors['virtualenv_already_exists'])):
+        ap.create(None, CONFIG_FILE, verbose=True)
+
+
+def test_create_agent_package_tar_already_exists(venv):
+    config = ap._import_config(CONFIG_FILE)
+    shutil.rmtree(TEST_VENV)
+    with open(config['output_tar'], 'w') as a:
+        a.write('CONTENT')
+    with pytest.raises(
+            SystemExit,
+            match=str(codes.errors['tar_already_exists'])):
+        ap.create(None, CONFIG_FILE, verbose=True)
+    os.remove(config['output_tar'])
+
+
+def test_create_agent_package_with_version_info(venv):
+    distro = 'Ubuntu'
+    release = 'trusty'
+    os.environ['VERSION'] = '3.3.0'
+    os.environ['PRERELEASE'] = 'm4'
+    os.environ['BUILD'] = '666'
+    config = ap._import_config(CONFIG_FILE)
+    config.pop('output_tar')
+    archive = ap._name_archive(
+        distro, release,
+        os.environ['VERSION'],
+        os.environ['PRERELEASE'],
+        os.environ['BUILD'])
+    try:
+        ap.create(config, force=True, verbose=True)
+        assert os.path.isfile(archive)
+    finally:
+        os.remove(archive)
+        os.environ.pop('VERSION')
+        os.environ.pop('PRERELEASE')
+        os.environ.pop('BUILD')
+
+
+def test_naming():
+    distro = 'Ubuntu'
+    release = 'trusty'
+    version = '3.3.0'
+    milestone = 'm4'
+    build = '666'
+    archive = ap._name_archive(distro, release, version, milestone, build)
+    assert archive == 'Ubuntu-trusty-agent_3.3.0-m4-b666.tar.gz'
+
+
+def test_naming_no_version_info():
+    distro = 'Ubuntu'
+    release = 'trusty'
+    version = None
+    milestone = None
+    build = None
+    archive = ap._name_archive(distro, release, version, milestone, build)
+    assert archive == 'Ubuntu-trusty-agent.tar.gz'
