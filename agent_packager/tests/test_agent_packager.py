@@ -27,10 +27,10 @@ import shutil
 
 
 TEST_RESOURCES_DIR = 'agent_packager/tests/resources/'
-CONFIG_FILE = os.path.join(TEST_RESOURCES_DIR, 'config_file.yaml')
+CONFIG_FILE = os.path.join(TEST_RESOURCES_DIR, 'config_file.ini')
 TARGET_PACKAGE = 'Ubuntu-trusty-agent.tar.gz'  # same as in the config file
-BAD_CONFIG_FILE = os.path.join(TEST_RESOURCES_DIR, 'bad_config_file.yaml')
-EMPTY_CONFIG_FILE = os.path.join(TEST_RESOURCES_DIR, 'empty_config_file.yaml')
+BAD_CONFIG_FILE = os.path.join(TEST_RESOURCES_DIR, 'bad_config_file.ini')
+EMPTY_CONFIG_FILE = os.path.join(TEST_RESOURCES_DIR, 'empty_config_file.ini')
 BASE_DIR = 'cloudify'
 TEST_VENV = os.path.join(BASE_DIR, 'env')
 TEST_MODULE = 'xmltodict'
@@ -66,14 +66,13 @@ def test_set_global_verbosity_level(caplog):
 
 
 def test_import_config_file():
-    outcome = ap._import_config(CONFIG_FILE)
-    assert isinstance(outcome, dict)
-    assert 'distribution' in outcome
+    config = ap._import_config(CONFIG_FILE)
+    assert config.has_option('system', 'distribution')
 
 
 def test_fail_import_config_file():
     with pytest.raises(exceptions.ConfigFileError, match='No such file'):
-        ap._import_config('')
+        ap._import_config('nonexistent file')
 
 
 def test_import_bad_config_file_mapping():
@@ -192,8 +191,8 @@ def test_create_agent_package():
         shutil.rmtree(TEST_VENV)
     os.makedirs(TEST_VENV)
     utils.run('tar -xzvf {0} -C {1} --strip-components=1'.format(
-        config['output_tar'], BASE_DIR))
-    os.remove(config['output_tar'])
+        config.get('output', 'tar'), BASE_DIR))
+    os.remove(config.get('output', 'tar'))
     assert os.path.isdir(TEST_VENV)
     pip_freeze_output = utils.get_installed(TEST_VENV).lower()
     for required_module in required_modules:
@@ -244,7 +243,7 @@ def test_dryrun(caplog):
 
 def test_create_agent_package_no_cloudify_agent_configured(venv):
     config = ap._import_config(CONFIG_FILE)
-    del config['cloudify_agent_module']
+    config.remove_option('install', 'cloudify_agent_module')
 
     with pytest.raises(
             exceptions.ConfigFileError, match='cloudify_agent_module'):
@@ -260,14 +259,14 @@ def test_create_agent_package_existing_venv_no_force(venv):
 def test_create_agent_package_tar_already_exists(venv):
     config = ap._import_config(CONFIG_FILE)
     shutil.rmtree(TEST_VENV)
-    with open(config['output_tar'], 'w') as a:
+    with open(config.get('output', 'tar'), 'w') as a:
         a.write('CONTENT')
     try:
         with pytest.raises(
                 exceptions.TarCreateError, match='already exists'):
             ap.create(None, CONFIG_FILE, verbose=True)
     finally:
-        os.remove(config['output_tar'])
+        os.remove(config.get('output', 'tar'))
 
 
 def test_create_agent_package_with_version_info(venv):
@@ -277,7 +276,7 @@ def test_create_agent_package_with_version_info(venv):
     os.environ['PRERELEASE'] = 'm4'
     os.environ['BUILD'] = '666'
     config = ap._import_config(CONFIG_FILE)
-    config.pop('output_tar')
+    config.remove_option('output', 'tar')
     archive = ap._name_archive(
         distro, release,
         os.environ['VERSION'],

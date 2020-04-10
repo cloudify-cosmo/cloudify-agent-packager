@@ -1,12 +1,24 @@
 
 import logging
-import yaml
 import json
 import platform
 import shutil
 import os
-
 from . import exceptions, utils
+
+try:
+    from configparser import (
+        RawConfigParser,
+        Error as ConfigParserError,
+        NoOptionError,
+        NoSectionError)
+except ImportError:
+    # py2
+    from ConfigParser import (
+        RawConfigParser,
+        Error as ConfigParserError,
+        NoOptionError,
+        NoSectionError)
 
 
 DEFAULT_CONFIG_FILE = 'config.yaml'
@@ -32,17 +44,37 @@ def set_global_verbosity_level(is_verbose_output=False):
         lgr.setLevel(logging.INFO)
 
 
-def _import_config(config_file=DEFAULT_CONFIG_FILE):
+def get_option(config_get, *args, **kwargs):
+    """Get an option from a configparser, or None if it doesn't exist.
+
+    :param config_get: a method on a configparser, eg .get or .getboolean etc,
+        or the configparser itself, in which case .get is used
+    """
+    if not callable(config_get):
+        config_get = config_get.get
+    try:
+        return config_get(*args, **kwargs)
+    except (NoOptionError, NoSectionError):
+        return None
+
+
+def _import_config(config_file=None):
     """Returns a configuration object
 
     :param string config_file: path to config file
     """
+    if not config_file:
+        config_file = DEFAULT_CONFIG_FILE
     lgr.debug('Importing config: {0}...'.format(config_file))
+    config = RawConfigParser(allow_no_value=True)
+    if not os.path.isfile(config_file):
+        raise exceptions.ConfigFileError(
+            'No such file: {0}'.format(config_file))
     try:
-        with open(config_file, 'r') as c:
-            return yaml.safe_load(c.read())
-    except (IOError, yaml.parser.ParserError, yaml.scanner.ScannerError) as e:
+        config.read(config_file)
+    except ConfigParserError as e:
         raise exceptions.ConfigFileError(e)
+    return config
 
 
 def _make_venv(venv, python, force):
@@ -93,7 +125,7 @@ def _set_defaults():
     modules = {}
     modules['additional_modules'] = []
     modules['additional_plugins'] = {}
-    modules['agent'] = ""
+    modules['agent'] = ''
     return modules
 
 
@@ -105,19 +137,24 @@ def _merge_modules(modules, config):
     """
     lgr.debug('Merging default modules with config...')
 
-    if 'requirements_file' in config:
-        modules['requirements_file'] = config['requirements_file']
+    modules['requirements_file'] = get_option(
+        config, 'install', 'requirements_file')
 
-    additional_modules = config.get('additional_modules', [])
-    for additional_module in additional_modules:
-        modules['additional_modules'].append(additional_module)
-    modules['additional_plugins'].update(config.get('additional_plugins', {}))
+    for name, _empty in config.items('additional_modules'):
+        modules['additional_modules'].append(name)
+    for name, target in config.items('additional_plugins'):
+        modules['additional_plugins'][name] = target
 
-    if 'cloudify_agent_module' in config:
-        modules['agent'] = config['cloudify_agent_module']
-    elif 'cloudify_agent_version' in config:
+    cloudify_agent_module = get_option(
+        config, 'install', 'cloudify_agent_module')
+    cloudify_agent_version = get_option(
+        config, 'install', 'cloudify_agent_version')
+
+    if cloudify_agent_module:
+        modules['agent'] = cloudify_agent_module
+    elif cloudify_agent_version:
         modules['agent'] = DEFAULT_CLOUDIFY_AGENT_URL.format(
-            config['cloudify_agent_version'])
+            cloudify_agent_version)
     else:
         raise exceptions.ConfigFileError(
             'Either `cloudify_agent_module` or `cloudify_agent_version` '
@@ -266,32 +303,37 @@ def create(config=None, config_file=None, force=False, dryrun=False,
     # to validate the installation
     final_set = {'modules': [], 'plugins': []}
     if not config:
-        config = _import_config(config_file) if config_file else \
-            _import_config()
-        config = {} if not config else config
+        config = _import_config(config_file)
 
-    name_params = {}
-    try:
-        (distro, release) = get_os_props()
-        name_params['distro'] = config.get('distribution', distro)
-        name_params['release'] = config.get('release', release)
-        name_params['version'] = config.get(
-            'version', os.environ.get('VERSION', None))
-        name_params['milestone'] = config.get(
-            'milestone', os.environ.get('PRERELEASE', None))
-        name_params['build'] = config.get(
-            'build', os.environ.get('BUILD', None))
-    except Exception as ex:
-        raise exceptions.AgentPackagerError(
-            'Distribution not found in configuration '
-            'and could not be retrieved automatically. '
-            'please specify the distribution in the config.file. '
-            '({0})'.format(ex)
-        )
-    python = config.get('python_path', '/usr/bin/python')
+    name_params = {
+        'distro': get_option(config, 'system', 'distribution'),
+        'release': get_option(config, 'system', 'release'),
+        'version': (get_option(config, 'output', 'version') or
+                    os.environ.get('VERSION', None)),
+        'milestone': (get_option(config, 'output', 'milestone') or
+                      os.environ.get('PRERELEASE', None)),
+        'build': (get_option(config, 'output', 'build') or
+                  os.environ.get('BUILD', None)),
+    }
+    if not name_params['distro'] or not name_params['release']:
+        try:
+            distro, release = get_os_props()
+        except Exception as ex:
+            raise exceptions.AgentPackagerError(
+                'Distribution not found in configuration '
+                'and could not be retrieved automatically. '
+                'please specify the distribution in the config.file. '
+                '({0})'.format(ex))
+        name_params.update({
+            'distro': distro,
+            'release': release
+        })
+
+    python = get_option(config, 'system', 'python_path') or '/usr/bin/python'
     venv = DEFAULT_VENV_PATH
     venv_already_exists = utils.is_virtualenv(venv)
-    destination_tar = config.get('output_tar', _name_archive(**name_params))
+    destination_tar = get_option(config, 'output', 'tar',) or \
+        _name_archive(**name_params)
 
     lgr.debug('Distibution is: {0}'.format(name_params['distro']))
     lgr.debug('Distribution release is: {0}'.format(name_params['release']))
@@ -322,14 +364,10 @@ def create(config=None, config_file=None, force=False, dryrun=False,
     lgr.info('The following modules and plugins were installed '
              'in the agent:\n{0}'.format(utils.get_installed(venv)))
 
-    # if keep_virtualenv is explicitly specified to be false, the virtualenv
-    # will not be deleted.
-    # if keep_virtualenv is not in the config but the virtualenv already
-    # existed, it will not be deleted.
-    if ('keep_virtualenv' in config and not config['keep_virtualenv']) \
-            or ('keep_virtualenv' not in config and not venv_already_exists):
+    keep_virtualenv = get_option(
+        config.getboolean, 'output', 'keep_virtualenv') or False
+    if not keep_virtualenv and not venv_already_exists:
         lgr.info('Removing origin virtualenv...')
         shutil.rmtree(venv)
 
-    # duh!
     lgr.info('Process complete!')

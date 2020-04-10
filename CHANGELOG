@@ -7,3 +7,4 @@
     - external_modules
 * On error, no longer return codes 1-15, but instead return 1 and show the
   exception.
+* Instead of a YAML config, use an .ini config only.
