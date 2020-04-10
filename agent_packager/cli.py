@@ -20,7 +20,7 @@ import logging
 from docopt import docopt
 import pkg_resources
 
-from . import logger, packager
+from . import packager
 
 
 lgr = logging.getLogger()
@@ -46,7 +46,11 @@ def _run(test_options=None):
         )
 
 def main():
-    logger.init()
+    logging.basicConfig(
+        stream=sys.stdout,
+        level=logging.INFO,
+        format="%(asctime)s %(levelname)s - %(message)s"
+    )
     _run()
 
 if __name__ == '__main__':
