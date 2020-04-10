@@ -1,5 +1,3 @@
-- agent_packager/logger.py:60:    #  TODO: (IMPRV) only perform file related actions if file handler is
-- agent_packager/logger.py:61:    #  TODO: (IMPRV) defined.
 - agent_packager/utils.py:124:    #  TODO: solve or depracate..
 - agent_packager/utils.py:125:    #  TODO: apparently, it will tar the first child dir of
 - agent_packager/utils.py:126:    #  TODO: source, and not the given parent.

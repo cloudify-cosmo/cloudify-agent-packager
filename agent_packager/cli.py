@@ -16,13 +16,14 @@ Options:
     --version                   Display current version
 """
 
+import logging
 from docopt import docopt
 import pkg_resources
 
 from . import logger, packager
 
 
-lgr = logger.init()
+lgr = logging.getLogger()
 
 def ver_check():
     version = None
@@ -45,6 +46,7 @@ def _run(test_options=None):
         )
 
 def main():
+    logger.init()
     _run()
 
 if __name__ == '__main__':

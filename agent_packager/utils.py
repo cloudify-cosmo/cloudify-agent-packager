@@ -1,13 +1,14 @@
+import logging
 import subprocess
 import sys
 import requests
 import re
 import os
 
-from . import codes, logger
+from . import codes
 
 
-lgr = logger.init()
+lgr = logging.getLogger()
 
 
 def run(cmd, no_print=False):

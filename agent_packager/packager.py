@@ -7,7 +7,7 @@ import shutil
 import os
 import sys
 
-from . import codes, logger, utils
+from . import codes, utils
 
 
 DEFAULT_CONFIG_FILE = 'config.yaml'
@@ -16,7 +16,7 @@ DEFAULT_VENV_PATH = 'cloudify/env'
 
 DEFAULT_CLOUDIFY_AGENT_URL = 'https://github.com/cloudify-cosmo/cloudify-agent/archive/{0}.tar.gz'  # NOQA
 
-lgr = logger.init()
+lgr = logging.getLogger()
 verbose_output = False
 
 

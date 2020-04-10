@@ -17,7 +17,6 @@ import agent_packager.packager as ap
 import agent_packager.cli as cli
 import agent_packager.utils as utils
 import agent_packager.codes as codes
-from agent_packager.logger import init
 from requests import ConnectionError
 
 from contextlib import closing
@@ -58,20 +57,20 @@ def venv(func):
 class TestUtils(testtools.TestCase):
 
     def test_set_global_verbosity_level(self):
-        lgr = init(base_level=logging.INFO)
+        lgr = logging.getLogger()
 
         with LogCapture() as l:
             ap.set_global_verbosity_level(is_verbose_output=False)
             lgr.debug('TEST_LOGGER_OUTPUT')
             l.check()
             lgr.info('TEST_LOGGER_OUTPUT')
-            l.check(('user', 'INFO', 'TEST_LOGGER_OUTPUT'))
+            l.check(('root', 'INFO', 'TEST_LOGGER_OUTPUT'))
 
             ap.set_global_verbosity_level(is_verbose_output=True)
             lgr.debug('TEST_LOGGER_OUTPUT')
             l.check(
-                ('user', 'INFO', 'TEST_LOGGER_OUTPUT'),
-                ('user', 'DEBUG', 'TEST_LOGGER_OUTPUT'))
+                ('root', 'INFO', 'TEST_LOGGER_OUTPUT'),
+                ('root', 'DEBUG', 'TEST_LOGGER_OUTPUT'))
 
     def test_import_config_file(self):
         outcome = ap._import_config(CONFIG_FILE)
