@@ -30,7 +30,7 @@ LOGGER = {
         }
     },
     "loggers": {
-        "user": {
+        "": {
             "handlers": ["file", "console"]
         },
     }
