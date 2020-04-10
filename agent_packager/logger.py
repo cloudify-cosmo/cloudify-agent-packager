@@ -39,4 +39,12 @@ LOGGER = {
 
 def init(logging_config=None):
     logging_config = logging_config or LOGGER
+    try:
+        log_dir = os.path.dirname(
+            logging_config['handlers']['file']['filename'])
+    except KeyError:
+        pass
+    else:
+        if not os.path.exists(log_dir):
+            os.makedirs(log_dir)
     logging.config.dictConfig(logging_config)
