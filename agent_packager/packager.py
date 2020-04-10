@@ -5,9 +5,8 @@ import json
 import platform
 import shutil
 import os
-import sys
 
-from . import codes, utils
+from . import exceptions, utils
 
 
 DEFAULT_CONFIG_FILE = 'config.yaml'
@@ -42,14 +41,8 @@ def _import_config(config_file=DEFAULT_CONFIG_FILE):
     try:
         with open(config_file, 'r') as c:
             return yaml.safe_load(c.read())
-    except IOError as ex:
-        lgr.error(str(ex))
-        lgr.error('Cannot access config file')
-        sys.exit(codes.errors['could_not_access_config_file'])
-    except (yaml.parser.ParserError, yaml.scanner.ScannerError) as ex:
-        lgr.error(str(ex))
-        lgr.error('Invalid yaml file')
-        sys.exit(codes.errors['invalid_yaml_file'])
+    except (IOError, yaml.parser.ParserError, yaml.scanner.ScannerError) as e:
+        raise exceptions.ConfigFileError(e)
 
 
 def _make_venv(venv, python, force):
@@ -67,10 +60,10 @@ def _make_venv(venv, python, force):
         if force:
             lgr.info('Installing within existing virtualenv: {0}'.format(venv))
         else:
-            lgr.error('Virtualenv already exists at {0}. '
-                      'You can use the -f flag to install within the '
-                      'existing virtualenv.'.format(venv))
-            sys.exit(codes.errors['virtualenv_already_exists'])
+            raise exceptions.VirtualenvCreationError(
+                'Virtualenv already exists at {0}. '
+                'You can use the -f flag to install within the '
+                'existing virtualenv.'.format(venv))
     else:
         lgr.debug('Creating virtualenv: {0}'.format(venv))
         utils.make_virtualenv(venv, python)
@@ -90,9 +83,8 @@ def _handle_output_file(destination_tar, force):
         lgr.info('Removing previous agent package...')
         os.remove(destination_tar)
     if os.path.exists(destination_tar):
-            lgr.error('Destination tar already exists: {0}'.format(
-                destination_tar))
-            sys.exit(codes.errors['tar_already_exists'])
+        raise exceptions.TarCreateError(
+            '{0} already exists'.format(destination_tar))
 
 
 def _set_defaults():
@@ -127,9 +119,10 @@ def _merge_modules(modules, config):
         modules['agent'] = DEFAULT_CLOUDIFY_AGENT_URL.format(
             config['cloudify_agent_version'])
     else:
-        lgr.error('Either `cloudify_agent_module` or `cloudify_agent_version` '
-                  'must be specified in the yaml configuration file.')
-        sys.exit(codes.errors['missing_cloudify_agent_config'])
+        raise exceptions.ConfigFileError(
+            'Either `cloudify_agent_module` or `cloudify_agent_version` '
+            'must be specified in the configuration file.'
+        )
     return modules
 
 
@@ -153,9 +146,9 @@ def _validate(modules, venv):
             failed.append(module_name)
 
     if failed:
-        lgr.error('Validation failed. some of the requested modules were not '
-                  'installed.')
-        sys.exit(codes.errors['installation_validation_failed'])
+        raise exceptions.PipInstallError(
+            'some of the requested modules were not installed: {0}'
+            .format(failed))
 
 
 class ModuleInstaller():
@@ -289,12 +282,12 @@ def create(config=None, config_file=None, force=False, dryrun=False,
         name_params['build'] = config.get(
             'build', os.environ.get('BUILD', None))
     except Exception as ex:
-        lgr.error(
+        raise exceptions.AgentPackagerError(
             'Distribution not found in configuration '
             'and could not be retrieved automatically. '
-            'please specify the distribution in the yaml. '
-            '({0})'.format(ex.message))
-        sys.exit(codes.errors['could_not_identify_distribution'])
+            'please specify the distribution in the config.file. '
+            '({0})'.format(ex)
+        )
     python = config.get('python_path', '/usr/bin/python')
     venv = DEFAULT_VENV_PATH
     venv_already_exists = utils.is_virtualenv(venv)
@@ -319,7 +312,7 @@ def create(config=None, config_file=None, force=False, dryrun=False,
         modules, sort_keys=True, indent=4, separators=(',', ': '))))
     if dryrun:
         lgr.info('Dryrun complete')
-        sys.exit(codes.notifications['dryrun_complete'])
+        return
 
     final_set = _install(modules, venv, final_set)
     if not no_validate:

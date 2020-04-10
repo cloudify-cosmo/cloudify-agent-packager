@@ -16,7 +16,7 @@
 import agent_packager.packager as ap
 import agent_packager.cli as cli
 import agent_packager.utils as utils
-import agent_packager.codes as codes
+from agent_packager import exceptions
 from requests import ConnectionError
 
 import pytest
@@ -72,16 +72,12 @@ def test_import_config_file():
 
 
 def test_fail_import_config_file():
-    with pytest.raises(
-            SystemExit,
-            match=str(codes.errors['could_not_access_config_file'])):
+    with pytest.raises(exceptions.ConfigFileError, match='No such file'):
         ap._import_config('')
 
 
 def test_import_bad_config_file_mapping():
-    with pytest.raises(
-            SystemExit,
-            match=str(codes.errors['invalid_yaml_file'])):
+    with pytest.raises(exceptions.ConfigFileError):
         ap._import_config(BAD_CONFIG_FILE)
 
 
@@ -100,16 +96,13 @@ def test_create_virtualenv(venv):
 
 
 def test_fail_create_virtualenv_bad_dir():
-    with pytest.raises(
-            SystemExit,
-            match=str(codes.errors['could_not_create_virtualenv'])):
-        utils.make_virtualenv('/' + TEST_VENV)
+    target = '/' + TEST_VENV
+    with pytest.raises(exceptions.VirtualenvCreationError, match=target):
+        utils.make_virtualenv(target)
 
 
 def test_fail_create_virtualenv_missing_python():
-    with pytest.raises(
-            SystemExit,
-            match=str(codes.errors['could_not_create_virtualenv'])):
+    with pytest.raises(exceptions.VirtualenvCreationError):
         utils.make_virtualenv(TEST_VENV, '/usr/bin/missing_python')
 
 
@@ -120,16 +113,12 @@ def test_install_module(venv):
 
 
 def test_install_nonexisting_module(venv):
-    with pytest.raises(
-            SystemExit,
-            match=str(codes.errors['could_not_install_module'])):
+    with pytest.raises(exceptions.PipInstallError):
         utils.install_module('BLAH!!', TEST_VENV)
 
 
 def test_install_module_nonexisting_venv():
-    with pytest.raises(
-            SystemExit,
-            match=str(codes.errors['could_not_install_module'])):
+    with pytest.raises(exceptions.PipInstallError):
         utils.install_module(TEST_MODULE, 'BLAH!!')
 
 
@@ -173,16 +162,12 @@ def test_tar():
 
 
 def test_tar_no_permissions(venv):
-    with pytest.raises(
-            SystemExit,
-            match=str(codes.errors['failed_to_create_tar'])):
+    with pytest.raises(exceptions.TarCreateError):
         utils.tar(TEST_VENV, '/file')
 
 
 def test_tar_missing_source():
-    with pytest.raises(
-            SystemExit,
-            match=str(codes.errors['failed_to_create_tar'])):
+    with pytest.raises(exceptions.TarCreateError):
         utils.tar('missing', 'file')
     os.remove('file')
 
@@ -232,7 +217,7 @@ def test_create_agent_package_in_existing_venv_force():
         os.remove(TARGET_PACKAGE)
 
 
-def test_create_agent_package_in_existing_venv_no_force():
+def test_create_agent_package_in_existing_venv_no_force(venv):
     cli_options = {
         '--config': CONFIG_FILE,
         '--force': False,
@@ -240,14 +225,9 @@ def test_create_agent_package_in_existing_venv_no_force():
         '--no-validation': False,
         '--verbose': True
     }
-    utils.make_virtualenv(TEST_VENV)
-    try:
-        with pytest.raises(
-                SystemExit,
-                match=str(codes.errors['virtualenv_already_exists'])):
-            cli._run(cli_options)
-    finally:
-        shutil.rmtree(TEST_VENV)
+    with pytest.raises(
+            exceptions.VirtualenvCreationError, match='already exists'):
+        cli._run(cli_options)
 
 
 def test_dryrun(caplog):
@@ -258,10 +238,7 @@ def test_dryrun(caplog):
         '--no-validation': False,
         '--verbose': True
     }
-    with pytest.raises(
-            SystemExit,
-            match=str(codes.notifications['dryrun_complete'])):
-        cli._run(cli_options)
+    cli._run(cli_options)
     assert ('root', logging.INFO, 'Dryrun complete') in caplog.record_tuples
 
 
@@ -270,15 +247,13 @@ def test_create_agent_package_no_cloudify_agent_configured(venv):
     del config['cloudify_agent_module']
 
     with pytest.raises(
-            SystemExit,
-            match=str(codes.errors['missing_cloudify_agent_config'])):
+            exceptions.ConfigFileError, match='cloudify_agent_module'):
         ap.create(config, None, force=True, verbose=True)
 
 
 def test_create_agent_package_existing_venv_no_force(venv):
     with pytest.raises(
-            SystemExit,
-            match=str(codes.errors['virtualenv_already_exists'])):
+            exceptions.VirtualenvCreationError, match='already exists'):
         ap.create(None, CONFIG_FILE, verbose=True)
 
 
@@ -287,11 +262,12 @@ def test_create_agent_package_tar_already_exists(venv):
     shutil.rmtree(TEST_VENV)
     with open(config['output_tar'], 'w') as a:
         a.write('CONTENT')
-    with pytest.raises(
-            SystemExit,
-            match=str(codes.errors['tar_already_exists'])):
-        ap.create(None, CONFIG_FILE, verbose=True)
-    os.remove(config['output_tar'])
+    try:
+        with pytest.raises(
+                exceptions.TarCreateError, match='already exists'):
+            ap.create(None, CONFIG_FILE, verbose=True)
+    finally:
+        os.remove(config['output_tar'])
 
 
 def test_create_agent_package_with_version_info(venv):

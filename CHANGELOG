@@ -5,3 +5,5 @@
     - core_plugins
     - mandatory_modules
     - external_modules
+* On error, no longer return codes 1-15, but instead return 1 and show the
+  exception.
