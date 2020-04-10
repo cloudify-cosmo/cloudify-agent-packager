@@ -199,14 +199,9 @@ class TestCreate(testtools.TestCase):
         required_modules = [
             'cloudify-plugins-common',
             'cloudify-rest-client',
-            'cloudify-fabric-plugin',
             'cloudify-agent',
             'pyyaml',
             'xmltodict'
-        ]
-        excluded_modules = [
-            'cloudify-diamond-plugin',
-            'cloudify-script-plugin'
         ]
         config = ap._import_config(CONFIG_FILE)
         cli._run(cli_options)
@@ -221,8 +216,6 @@ class TestCreate(testtools.TestCase):
             TEST_VENV).lower()
         for required_module in required_modules:
             self.assertIn(required_module, pip_freeze_output)
-        for excluded_module in excluded_modules:
-            self.assertNotIn(excluded_module, pip_freeze_output)
         shutil.rmtree(TEST_VENV)
 
     def test_create_agent_package_in_existing_venv_force(self):
