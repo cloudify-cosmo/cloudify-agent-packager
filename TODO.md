@@ -1,3 +1,0 @@
-- agent_packager/utils.py:124:    #  TODO: solve or depracate..
-- agent_packager/utils.py:125:    #  TODO: apparently, it will tar the first child dir of
-- agent_packager/utils.py:126:    #  TODO: source, and not the given parent.
