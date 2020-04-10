@@ -14,6 +14,7 @@ jobs:
       - image: circleci/python:2.7.14
     steps:
       - checkout
+      - run: sudo apt-get install libpython-dev
       - run: virtualenv ~/venv
       - run: ~/venv/bin/pip install .
       - run: ~/venv/bin/pip install -r test-requirements.txt
