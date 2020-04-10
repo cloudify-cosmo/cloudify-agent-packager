@@ -49,14 +49,6 @@ def make_virtualenv(virtualenv_dir, python='/usr/bin/python'):
         lgr.error('Could not create venv: {0}'.format(virtualenv_dir))
         sys.exit(codes.errors['could_not_create_virtualenv'])
 
-    if sys.version_info[:2] == (2, 6):
-        p = run('{0}/bin/pip install setuptools==36.8.0'
-                .format(virtualenv_dir))
-        if not p.returncode == 0:
-            lgr.error('Could not install setuptools into venv: {0}'
-                      .format(virtualenv_dir))
-            sys.exit(codes.errors['could_not_create_virtualenv'])
-
 
 def install_module(module, venv):
     """installs a module in a virtualenv
