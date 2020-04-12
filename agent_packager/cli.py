@@ -17,6 +17,8 @@ Options:
 """
 
 import logging
+import sys
+
 from docopt import docopt
 import pkg_resources
 
