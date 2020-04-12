@@ -183,7 +183,6 @@ def test_create_agent_package():
         'cloudify-plugins-common',
         'cloudify-rest-client',
         'cloudify-agent',
-        'pyyaml',
     ]
     config = ap._import_config(CONFIG_FILE)
     cli._run(cli_options)
