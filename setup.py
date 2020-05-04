@@ -31,4 +31,5 @@ setup(
         "virtualenv==15.1.0",
         "requests==2.7.0",
     ],
+    include_package_data=True
 )
