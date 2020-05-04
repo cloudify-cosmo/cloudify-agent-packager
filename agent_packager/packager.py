@@ -342,7 +342,7 @@ def create(config=None, config_file=None, force=False, dryrun=False,
             'release': release
         })
 
-    python = get_option(config, 'system', 'python_path') or '/usr/bin/python'
+    python = get_option(config, 'system', 'python_path')
     venv = DEFAULT_VENV_PATH
     venv_already_exists = utils.is_virtualenv(venv)
     destination_tar = get_option(config, 'output', 'tar',) or \

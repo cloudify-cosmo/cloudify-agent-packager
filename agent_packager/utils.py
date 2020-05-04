@@ -3,6 +3,7 @@ import subprocess
 import requests
 import re
 import os
+import sys
 
 from . import exceptions
 
@@ -28,13 +29,14 @@ def run(cmd, no_print=False):
     return p
 
 
-def make_virtualenv(virtualenv_dir, python='/usr/bin/python'):
+def make_virtualenv(virtualenv_dir, python=None):
     """creates a virtualenv
 
     :param string virtualenv_dir: path of virtualenv to create
     """
     lgr.debug('virtualenv_dir: {0}'.format(virtualenv_dir))
-    command = 'virtualenv -p {0} {1}'.format(python, virtualenv_dir)
+    python = python or sys.executable
+    command = '{0} -m virtualenv {1}'.format(python, virtualenv_dir)
 
     p = run(command)
     if not p.returncode == 0:
