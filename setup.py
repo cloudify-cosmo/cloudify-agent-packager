@@ -12,7 +12,7 @@ def read(*parts):
 
 setup(
     name='cloudify-agent-packager',
-    version='5.0.0',
+    version='5.0.1',
     url='https://github.com/cloudify-cosmo/cloudify-agent-packager',
     author='Cloudify',
     author_email='cosmo-admin@cloudify.co',
@@ -31,4 +31,5 @@ setup(
         "virtualenv==15.1.0",
         "requests==2.7.0",
     ],
+    include_package_data=True
 )
