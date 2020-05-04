@@ -1,6 +1,5 @@
 import logging
 import subprocess
-import sys
 import requests
 import re
 import os
@@ -36,14 +35,6 @@ def make_virtualenv(virtualenv_dir, python='/usr/bin/python'):
     """
     lgr.debug('virtualenv_dir: {0}'.format(virtualenv_dir))
     command = 'virtualenv -p {0} {1}'.format(python, virtualenv_dir)
-
-    if sys.version_info[:2] == (2, 6):
-        # python 2.6 will fail when creating a virtualenv because it will
-        # attempt to install the newest setuptools version which does not
-        # support 2.6. Fall back to not installing setuptools automatically,
-        # but we'll install it separately after creating the venv, with
-        # the last version that did support 2.6.
-        command += ' --no-setuptools'
 
     p = run(command)
     if not p.returncode == 0:
