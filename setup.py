@@ -12,7 +12,7 @@ def read(*parts):
 
 setup(
     name='cloudify-agent-packager',
-    version='5.0.2',
+    version='5.0.3',
     url='https://github.com/cloudify-cosmo/cloudify-agent-packager',
     author='Cloudify',
     author_email='cosmo-admin@cloudify.co',

@@ -20,6 +20,13 @@ except ImportError:
         NoOptionError,
         NoSectionError)
 
+try:
+    import distro
+except ImportError:
+    HAS_DISTRO = False
+else:
+    HAS_DISTRO = True
+
 
 DEFAULT_CONFIG_FILE = 'config.yaml'
 DEFAULT_OUTPUT_TAR_PATH = '{0}-{1}-agent.tar.gz'
@@ -257,10 +264,10 @@ def get_module_name(module):
 def get_os_props():
     """returns a tuple of the distro and release
     """
+    if HAS_DISTRO:
+        return distro.name(), distro.codename()
     data = platform.dist()
-    distro = data[0]
-    release = data[2]
-    return distro, release
+    return data[0], data[2]
 
 
 def _name_archive(distro, release, version, milestone, build):
