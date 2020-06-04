@@ -19,6 +19,7 @@ import agent_packager.utils as utils
 from agent_packager import exceptions
 from requests import ConnectionError
 
+import errno
 import pytest
 import logging
 import tarfile
@@ -161,8 +162,9 @@ def test_tar():
 
 
 def test_tar_missing_source():
-    with pytest.raises(exceptions.TarCreateError):
+    with pytest.raises(OSError) as cm:
         utils.tar('missing', 'file')
+    assert cm.value.errno == errno.ENOENT
     os.remove('file')
 
 
