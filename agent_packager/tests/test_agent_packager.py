@@ -177,8 +177,7 @@ def test_create_agent_package():
         '--verbose': True
     }
     required_modules = [
-        'cloudify-plugins-common',
-        'cloudify-rest-client',
+        'cloudify-common',
         'cloudify-agent',
     ]
     config = ap._import_config(CONFIG_FILE)
