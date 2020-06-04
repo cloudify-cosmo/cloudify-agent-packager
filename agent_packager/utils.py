@@ -4,6 +4,7 @@ import requests
 import re
 import os
 import sys
+import tarfile
 
 from . import exceptions
 
@@ -120,18 +121,9 @@ def download_file(url, destination):
 
 
 def tar(source, destination):
-    # TODO: solve or depracate..
-    # TODO: apparently, it will tar the first child dir of
-    # TODO: source, and not the given parent.
-    # with closing(tarfile.open(destination, "w:gz")) as tar:
-    #     tar.add(source, arcname=os.path.basename(source))
-    # WORKAROUND IMPLEMENTATION
     lgr.info('Creating tar file: {0}'.format(destination))
-    command = 'tar czvf {0} {1}'.format(destination, source)
-    r = run(command, no_print=True)
-    if not r.returncode == 0:
-        raise exceptions.TarCreateError(
-            '{0} returned {1}'.format(command, r.returncode))
+    with tarfile.open(destination, "w:gz") as tar:
+        tar.add(source)
 
 
 def get_env_bin_path(env_path):
