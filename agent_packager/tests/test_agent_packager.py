@@ -19,6 +19,7 @@ import agent_packager.utils as utils
 from agent_packager import exceptions
 from requests import ConnectionError
 
+import errno
 import pytest
 import logging
 import tarfile
@@ -160,14 +161,10 @@ def test_tar():
     os.remove('tar.file')
 
 
-def test_tar_no_permissions(venv):
-    with pytest.raises(exceptions.TarCreateError):
-        utils.tar(TEST_VENV, '/file')
-
-
 def test_tar_missing_source():
-    with pytest.raises(exceptions.TarCreateError):
+    with pytest.raises(OSError) as cm:
         utils.tar('missing', 'file')
+    assert cm.value.errno == errno.ENOENT
     os.remove('file')
 
 
@@ -180,8 +177,7 @@ def test_create_agent_package():
         '--verbose': True
     }
     required_modules = [
-        'cloudify-plugins-common',
-        'cloudify-rest-client',
+        'cloudify-common',
         'cloudify-agent',
     ]
     config = ap._import_config(CONFIG_FILE)
