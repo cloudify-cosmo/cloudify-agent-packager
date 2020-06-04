@@ -160,11 +160,6 @@ def test_tar():
     os.remove('tar.file')
 
 
-def test_tar_no_permissions(venv):
-    with pytest.raises(exceptions.TarCreateError):
-        utils.tar(TEST_VENV, '/file')
-
-
 def test_tar_missing_source():
     with pytest.raises(exceptions.TarCreateError):
         utils.tar('missing', 'file')
