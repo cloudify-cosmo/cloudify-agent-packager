@@ -122,8 +122,9 @@ def download_file(url, destination):
 
 def tar(source, destination):
     lgr.info('Creating tar file: {0}'.format(destination))
-    with tarfile.open(destination, "w:gz") as tar:
-        tar.add(source)
+    tar = tarfile.open(destination, "w:gz")
+    tar.add(source)
+    tar.close()
 
 
 def get_env_bin_path(env_path):
