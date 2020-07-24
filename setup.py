@@ -27,7 +27,6 @@ setup(
         ]
     },
     install_requires=[
-        "docopt==.0.6.1",
         "virtualenv==15.1.0",
         "requests==2.7.0",
     ],
