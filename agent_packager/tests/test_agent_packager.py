@@ -40,6 +40,16 @@ MANAGER = 'https://github.com/cloudify-cosmo/cloudify-manager/archive/master.tar
 MOCK_MODULE = os.path.join(TEST_RESOURCES_DIR, 'mock-module')
 
 
+class FakeArgs:
+    def __init__(self):
+        self.config = CONFIG_FILE
+        self.force = False
+        self.dryrun = False
+        self.no_validation = False
+        # Normally defaults to false, but we want the tests to be descriptive
+        self.verbose = True
+
+
 @pytest.fixture
 def venv():
     shutil.rmtree(TEST_VENV, ignore_errors=True)
@@ -169,19 +179,14 @@ def test_tar_missing_source():
 
 
 def test_create_agent_package():
-    cli_options = {
-        '--config': CONFIG_FILE,
-        '--force': True,
-        '--dryrun': False,
-        '--no-validation': False,
-        '--verbose': True
-    }
+    args = FakeArgs()
+    args.force = True
     required_modules = [
         'cloudify-common',
         'cloudify-agent',
     ]
     config = ap._import_config(CONFIG_FILE)
-    cli._run(cli_options)
+    cli._run(args)
     if os.path.isdir(TEST_VENV):
         shutil.rmtree(TEST_VENV)
     os.makedirs(TEST_VENV)
@@ -196,43 +201,28 @@ def test_create_agent_package():
 
 
 def test_create_agent_package_in_existing_venv_force():
-    cli_options = {
-        '--config': CONFIG_FILE,
-        '--force': True,
-        '--dryrun': False,
-        '--no-validation': False,
-        '--verbose': True
-    }
+    args = FakeArgs()
+    args.force = True
     utils.make_virtualenv(TEST_VENV)
     try:
-        cli._run(cli_options)
+        cli._run(args)
     finally:
         shutil.rmtree(TEST_VENV)
         os.remove(TARGET_PACKAGE)
 
 
 def test_create_agent_package_in_existing_venv_no_force(venv):
-    cli_options = {
-        '--config': CONFIG_FILE,
-        '--force': False,
-        '--dryrun': False,
-        '--no-validation': False,
-        '--verbose': True
-    }
+    args = FakeArgs()
+    args.verbose = True
     with pytest.raises(
             exceptions.VirtualenvCreationError, match='already exists'):
-        cli._run(cli_options)
+        cli._run(args)
 
 
 def test_dryrun(caplog):
-    cli_options = {
-        '--config': CONFIG_FILE,
-        '--force': False,
-        '--dryrun': True,
-        '--no-validation': False,
-        '--verbose': True
-    }
-    cli._run(cli_options)
+    args = FakeArgs()
+    args.dryrun = True
+    cli._run(args)
     assert ('root', logging.INFO, 'Dryrun complete') in caplog.record_tuples
 
 
