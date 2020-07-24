@@ -28,7 +28,7 @@ def _run(args):
     )
 
 
-if __name__ == '__main__':
+def main():
     logging.basicConfig(
         stream=sys.stdout,
         level=logging.INFO,
@@ -79,3 +79,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     _run(args)
+
+
+if __name__ == '__main__':
+    main()
