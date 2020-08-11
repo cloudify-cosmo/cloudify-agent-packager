@@ -43,6 +43,7 @@ def make_virtualenv(virtualenv_dir, python=None):
     if not p.returncode == 0:
         raise exceptions.VirtualenvCreationError(virtualenv_dir)
 
+
 def virtualenv_relocatable(virtualenv_dir, python=None):
     """Make virtualenv_dir relocatable"""
     lgr.debug('making relocatable: {0}'.format(virtualenv_dir))
