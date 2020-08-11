@@ -44,6 +44,18 @@ def make_virtualenv(virtualenv_dir, python=None):
         raise exceptions.VirtualenvCreationError(virtualenv_dir)
 
 
+def virtualenv_relocatable(virtualenv_dir, python=None):
+    """Make virtualenv_dir relocatable"""
+    lgr.debug('making relocatable: {0}'.format(virtualenv_dir))
+    python = python or sys.executable
+    command = '{0} -m virtualenv {1} --relocatable'.format(
+        python, virtualenv_dir)
+
+    p = run(command)
+    if not p.returncode == 0:
+        raise exceptions.VirtualenvCreationError(virtualenv_dir)
+
+
 def install_module(module, venv):
     """installs a module in a virtualenv
 
