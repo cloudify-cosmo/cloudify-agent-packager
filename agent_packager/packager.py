@@ -370,6 +370,7 @@ def create(config=None, config_file=None, force=False, dryrun=False,
         return
 
     final_set = _install(modules, venv, final_set)
+    utils.virtualenv_relocatable(venv, python)
     if not no_validate:
         _validate(final_set, venv)
     utils.tar(venv, destination_tar)
