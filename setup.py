@@ -1,5 +1,6 @@
 from setuptools import setup
 import os
+import sys
 import codecs
 
 here = os.path.abspath(os.path.dirname(__file__))
@@ -9,6 +10,16 @@ def read(*parts):
     # intentionally *not* adding an encoding option to open
     return codecs.open(os.path.join(here, *parts), 'r').read()
 
+
+install_requires = [
+    "virtualenv==15.1.0",
+    "requests==2.7.0",
+]
+
+if sys.version_info[:2] == (2, 6):
+    install_requires += [
+        'argparse',
+    ]
 
 setup(
     name='cloudify-agent-packager',
@@ -26,9 +37,6 @@ setup(
             'cfy-ap = agent_packager.cli:main',
         ]
     },
-    install_requires=[
-        "virtualenv==15.1.0",
-        "requests==2.7.0",
-    ],
+    install_requires=install_requires,
     include_package_data=True
 )
