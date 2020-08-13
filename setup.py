@@ -23,7 +23,7 @@ if sys.version_info[:2] == (2, 6):
 
 setup(
     name='cloudify-agent-packager',
-    version='5.0.7',
+    version='5.0.8',
     url='https://github.com/cloudify-cosmo/cloudify-agent-packager',
     author='Cloudify',
     author_email='cosmo-admin@cloudify.co',
