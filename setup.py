@@ -13,7 +13,7 @@ def read(*parts):
 
 install_requires = [
     "virtualenv==15.1.0",
-    "requests==2.7.0",
+    "requests==2.20.0",
 ]
 
 if sys.version_info[:2] == (2, 6):
