@@ -4,6 +4,7 @@ import json
 import platform
 import shutil
 import os
+
 from . import exceptions, utils
 
 try:
@@ -107,6 +108,11 @@ def _make_venv(venv, python, force):
         lgr.debug('Creating virtualenv: {0}'.format(venv))
         utils.make_virtualenv(venv, python)
 
+    # Copy distutils to the new virtualenv. Not all OSes we support install
+    # python3-distutils by default, so we need to make sure it's there, since
+    # it is required in our code and 3rd party libraries we use.
+    utils.copy_distutils_to_virtualenv(venv)
+
 
 def _handle_output_file(destination_tar, force):
     """Handles the output tar.
@@ -201,7 +207,7 @@ def _validate(modules, venv):
             .format(failed))
 
 
-class ModuleInstaller():
+class ModuleInstaller:
     def __init__(self, modules, venv, final_set):
         self.venv = venv
         self.modules = modules
