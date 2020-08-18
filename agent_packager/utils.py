@@ -5,6 +5,7 @@ import re
 import os
 import sys
 import tarfile
+import distutils
 
 from . import exceptions
 
@@ -52,6 +53,22 @@ def virtualenv_relocatable(virtualenv_dir, python=None):
         python, virtualenv_dir)
 
     p = run(command)
+    if not p.returncode == 0:
+        raise exceptions.VirtualenvCreationError(virtualenv_dir)
+
+
+def copy_distutils_to_virtualenv(virtualenv_dir):
+    distutils_path = os.path.dirname(distutils.__file__)
+    python_name = 'python{}.{}'.format(sys.version_info.major,
+                                       sys.version_info.minor)
+    venv_lib_path = os.path.join(virtualenv_dir, 'lib', python_name)
+    venv_distutils_path = os.path.join(venv_lib_path, 'distutils')
+    # first, remove a distutils stub directory, if exists
+    if os.path.exists(venv_distutils_path):
+        p = run('rm -rf {}'.format(venv_distutils_path))
+        if not p.returncode == 0:
+            raise exceptions.VirtualenvCreationError(virtualenv_dir)
+    p = run('cp -r {0} {1}'.format(distutils_path, venv_distutils_path))
     if not p.returncode == 0:
         raise exceptions.VirtualenvCreationError(virtualenv_dir)
 
