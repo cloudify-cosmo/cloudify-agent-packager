@@ -59,8 +59,8 @@ def virtualenv_relocatable(virtualenv_dir, python=None):
 
 def copy_distutils_to_virtualenv(virtualenv_dir):
     distutils_path = os.path.dirname(distutils.__file__)
-    python_name = 'python{}.{}'.format(sys.version_info.major,
-                                       sys.version_info.minor)
+    python_name = 'python{}.{}'.format(sys.version_info[0],
+                                       sys.version_info[1])
     venv_lib_path = os.path.join(virtualenv_dir, 'lib', python_name)
     venv_distutils_path = os.path.join(venv_lib_path, 'distutils')
     # first, remove a distutils stub directory, if exists
