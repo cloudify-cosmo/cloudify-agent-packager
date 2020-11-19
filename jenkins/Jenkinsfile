@@ -40,13 +40,15 @@ pipeline {
             sh script: "mkdir -p ${env.WORKSPACE}/test && cp -rf ${env.WORKSPACE}/${env.PROJECT}/. ${env.WORKSPACE}/test", label: "copying repo to seperate workspace"
             
             container('python') {
-              sh script:'''
-                sudo apt-get install libpython-dev
-                virtualenv ~/venv
-                ~/venv/bin/pip install .
-                ~/venv/bin/pip install -r test-requirements.txt
-                ~/venv/bin/pytest -sv agent_packager
-                '''
+              dir("${env.WORKSPACE}/test") {
+                sh script:'''
+                  sudo apt-get install libpython-dev
+                  virtualenv ~/venv
+                  ~/venv/bin/pip install .
+                  ~/venv/bin/pip install -r test-requirements.txt
+                  ~/venv/bin/pytest -sv agent_packager
+                  '''
+              }
             }
           }
         }
