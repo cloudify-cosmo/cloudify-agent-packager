@@ -37,22 +37,28 @@ pipeline {
         }
         stage('test') {
           steps {
-            sh script: "mkdir -p ${env.WORKSPACE}/test && cp -rf ${env.WORKSPACE}/${env.PROJECT}/. ${env.WORKSPACE}/test", label: "copying repo to seperate workspace"
-            
-            container('python') {
-              dir("${env.WORKSPACE}/test") {
-                sh script:'''
-                  sudo apt-get install libpython-dev
-                  virtualenv ~/venv
-                  ~/venv/bin/pip install .
-                  ~/venv/bin/pip install -r test-requirements.txt
-                  ~/venv/bin/pytest -sv agent_packager
-                  '''
+            catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE'){
+              sh script: "mkdir -p ${env.WORKSPACE}/test && cp -rf ${env.WORKSPACE}/${env.PROJECT}/. ${env.WORKSPACE}/test", label: "copying repo to seperate workspace"
+              container('python') {
+                dir("${env.WORKSPACE}/test") {
+                  sh script:'''
+                    sudo apt-get install libpython-dev
+                    virtualenv ~/venv
+                    ~/venv/bin/pip install .
+                    ~/venv/bin/pip install -r test-requirements.txt
+                    ~/venv/bin/pytest -sv agent_packager --junitxml=test-results/agent-packager.xml
+                    '''
+                }
               }
             }
           }
         }
       }
+    }
+  }
+  post {
+    always {
+      junit '**/test-results/*.xml'
     }
   }
 }
