@@ -1,0 +1,69 @@
+pipeline {
+  agent {
+    kubernetes {
+      label "agent-packager-mb-${env.BUILD_NUMBER}"
+      defaultContainer 'jnlp'
+      yamlFile 'jenkins/build-pod.yaml'
+    }
+  }
+
+  options {
+    checkoutToSubdirectory('cloudify-agent-packager')
+    buildDiscarder(logRotator(numToKeepStr:'10'))
+    timeout(time: 60, unit: 'MINUTES')
+    timestamps()
+  }
+
+  environment{
+    PROJECT = "cloudify-agent-packager"
+  }
+
+  stages {
+    stage('flake8 & test') {
+      parallel {
+        stage('flake8') {
+          steps {
+            sh script: "mkdir -p ${env.WORKSPACE}/flake8 && cp -rf ${env.WORKSPACE}/${env.PROJECT}/. ${env.WORKSPACE}/flake8", label: "copying repo to seperate workspace"
+
+            container('python'){
+              dir("${env.WORKSPACE}/flake8") {
+                sh script:'''
+                  pip install --user flake8
+                  python -m flake8
+                  ''', label: 'install and run flake8'
+              }
+            }
+          }
+        }
+        stage('test') {
+          steps {
+            catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE'){
+              sh script: "mkdir -p ${env.WORKSPACE}/test && cp -rf ${env.WORKSPACE}/${env.PROJECT}/. ${env.WORKSPACE}/test", label: "copying repo to seperate workspace"
+              container('python') {
+                dir("${env.WORKSPACE}/test") {
+                  echo 'Install requirements and run pytest'
+                  sh '''
+                    sudo apt-get install libpython-dev
+                    virtualenv ~/venv
+                    ~/venv/bin/pip install .
+                    ~/venv/bin/pip install -r test-requirements.txt
+                    ~/venv/bin/pytest -sv agent_packager \
+                     --deselect=agent_packager/tests/test_agent_packager.py::test_fail_create_virtualenv_bad_dir \
+                     --deselect=agent_packager/tests/test_agent_packager.py::test_download_no_permissions \
+                     --junitxml=test-results/agent-packager.xml
+                    '''
+                    //deselect on tests failing
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+  post {
+    always {
+      junit '**/test-results/*.xml'
+    }
+  }
+}
