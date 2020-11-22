@@ -41,7 +41,8 @@ pipeline {
               sh script: "mkdir -p ${env.WORKSPACE}/test && cp -rf ${env.WORKSPACE}/${env.PROJECT}/. ${env.WORKSPACE}/test", label: "copying repo to seperate workspace"
               container('python') {
                 dir("${env.WORKSPACE}/test") {
-                  sh script:'''
+                  echo 'Install requirements and run pytest'
+                  sh '''
                     sudo apt-get install libpython-dev
                     virtualenv ~/venv
                     ~/venv/bin/pip install .
@@ -51,6 +52,7 @@ pipeline {
                      --deselect=agent_packager/tests/test_agent_packager.py::test_download_no_permissions \
                      --junitxml=test-results/agent-packager.xml
                     '''
+                    //deselect on tests failing
                 }
               }
             }
