@@ -270,10 +270,38 @@ def get_module_name(module):
 def get_os_props():
     """returns a tuple of the distro and release
     """
+    # Sometimes the code name for distro is returned as '' and we need to
+    # fallback to the version number and pick the major version number
+    # Usually this is happened when run on some Centos 8 versions
+    # >> > import platform
+    # >> > platform.dist()
+    # ('centos', '8.3.2011', '')
+    #
+    # In case of using distro the codename will be empty
+    # {
+    #     "codename": "",
+    #     "id": "centos",
+    #     "like": "rhel fedora",
+    #     "version": "8",
+    #     "version_parts": {
+    #         "build_number": "",
+    #         "major": "8",
+    #         "minor": ""
+    #     }
+    # }
     if HAS_DISTRO:
-        return distro.name(), distro.codename()
-    data = platform.dist()
-    return data[0], data[2]
+        name = distro.name()
+        codename = distro.codename()
+        version = distro.version()
+    else:
+        data = platform.dist()
+        name = data[0]
+        codename = data[2]
+        version = data[1].split('.')[0]
+
+    if name == 'centos' and version == '8':
+        codename = version
+    return name, codename
 
 
 def _name_archive(distro, release, version, milestone, build):

@@ -57,3 +57,7 @@ docs/_build/
 *COMMIT_MSG
 
 .qbcache/
+
+# IDE
+.idea/
+.DS_Store
