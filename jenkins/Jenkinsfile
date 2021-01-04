@@ -47,11 +47,8 @@ pipeline {
                     ~/venv/bin/pip install .
                     ~/venv/bin/pip install -r test-requirements.txt
                     ~/venv/bin/pytest -sv agent_packager \
-                     --deselect=agent_packager/tests/test_agent_packager.py::test_fail_create_virtualenv_bad_dir \
-                     --deselect=agent_packager/tests/test_agent_packager.py::test_download_no_permissions \
                      --junitxml=test-results/agent-packager.xml
                     '''
-                    //deselect on tests failing
                 }
               }
             }

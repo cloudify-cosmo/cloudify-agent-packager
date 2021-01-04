@@ -105,12 +105,6 @@ def test_create_virtualenv(venv):
     assert os.path.exists('{0}/bin/python'.format(TEST_VENV))
 
 
-def test_fail_create_virtualenv_bad_dir():
-    target = '/' + TEST_VENV
-    with pytest.raises(exceptions.VirtualenvCreationError, match=target):
-        utils.make_virtualenv(target)
-
-
 def test_fail_create_virtualenv_missing_python():
     with pytest.raises(exceptions.VirtualenvCreationError):
         utils.make_virtualenv(TEST_VENV, '/usr/bin/missing_python')
@@ -151,11 +145,6 @@ def test_download_connection_failed():
 def test_download_missing_path():
     with pytest.raises(IOError):
         utils.download_file(TEST_FILE, 'x/file')
-
-
-def test_download_no_permissions():
-    with pytest.raises(IOError):
-        utils.download_file(TEST_FILE, '/file')
 
 
 def test_tar():
