@@ -40,14 +40,13 @@ pipeline {
               sh script: "mkdir -p ${env.WORKSPACE}/test && cp -rf ${env.WORKSPACE}/${env.PROJECT}/. ${env.WORKSPACE}/test", label: "copying repo to seperate workspace"
               container('python') {
                 dir("${env.WORKSPACE}/test") {
-                  echo 'Install requirements and run pytest'
-                  sh '''
+                  sh script: '''
                     virtualenv ~/venv
                     ~/venv/bin/pip install .
                     ~/venv/bin/pip install -r test-requirements.txt
                     ~/venv/bin/pytest -sv agent_packager \
                      --junitxml=test-results/agent-packager.xml
-                    '''
+                    ''', label: 'Install requirements and run pytest'
                 }
               }
             }
