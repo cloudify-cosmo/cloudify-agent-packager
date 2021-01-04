@@ -42,7 +42,6 @@ pipeline {
                 dir("${env.WORKSPACE}/test") {
                   echo 'Install requirements and run pytest'
                   sh '''
-                    sudo apt-get install libpython-dev
                     virtualenv ~/venv
                     ~/venv/bin/pip install .
                     ~/venv/bin/pip install -r test-requirements.txt
