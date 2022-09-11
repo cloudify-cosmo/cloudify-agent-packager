@@ -3,7 +3,7 @@ kind: Pod
 spec:
   containers:
     - name: python
-      image: python:2
+      image: python:3.10
       resources:
         requests:
           cpu: 1

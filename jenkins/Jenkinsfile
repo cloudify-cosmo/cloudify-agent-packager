@@ -41,7 +41,7 @@ pipeline {
               container('python') {
                 dir("${env.WORKSPACE}/test") {
                   sh script: '''
-                    virtualenv ~/venv
+                    python -m venv ~/venv
                     ~/venv/bin/pip install .
                     ~/venv/bin/pip install -r test-requirements.txt
                     ~/venv/bin/pytest -sv agent_packager \
