@@ -111,7 +111,7 @@ def _make_venv(venv, python, force):
     # Copy distutils to the new virtualenv. Not all OSes we support install
     # python3-distutils by default, so we need to make sure it's there, since
     # it is required in our code and 3rd party libraries we use.
-    utils.copy_distutils_to_virtualenv(venv)
+    utils.copy_distutils_to_virtualenv(venv, python)
 
 
 def _handle_output_file(destination_tar, force):
@@ -250,7 +250,7 @@ def _install(modules, venv, final_set):
     """
     installer = ModuleInstaller(modules, venv, final_set)
     lgr.info('Installing modules required by setup...')
-    installer.install_modules(['setuptools==36.8.0'])
+    installer.install_modules(['setuptools==65.3.0'])
     lgr.info('Installing module from requirements file...')
     installer.install_requirements_file()
     lgr.info('Installing external modules...')
@@ -349,6 +349,9 @@ def create(config=None, config_file=None, force=False, dryrun=False,
         })
 
     python = get_option(config, 'system', 'python_path')
+
+    lgr.info('>>> python path: %s', python)
+
     venv = DEFAULT_VENV_PATH
     venv_already_exists = utils.is_virtualenv(venv)
     destination_tar = get_option(config, 'output', 'tar',) or \
@@ -376,7 +379,7 @@ def create(config=None, config_file=None, force=False, dryrun=False,
         return
 
     final_set = _install(modules, venv, final_set)
-    utils.virtualenv_relocatable(venv, python)
+    # utils.virtualenv_relocatable(venv, python) -- no longer supported
     if not no_validate:
         _validate(final_set, venv)
     utils.tar(venv, destination_tar)
@@ -388,6 +391,6 @@ def create(config=None, config_file=None, force=False, dryrun=False,
         config.getboolean, 'output', 'keep_virtualenv') or False
     if not keep_virtualenv and not venv_already_exists:
         lgr.info('Removing origin virtualenv...')
-        shutil.rmtree(venv)
+ #       shutil.rmtree(venv)
 
     lgr.info('Process complete!')

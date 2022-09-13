@@ -38,7 +38,7 @@ def make_virtualenv(virtualenv_dir, python=None):
     """
     lgr.debug('virtualenv_dir: {0}'.format(virtualenv_dir))
     python = python or sys.executable
-    command = '{0} -m virtualenv {1}'.format(python, virtualenv_dir)
+    command = '{0} -m venv {1}'.format(python, virtualenv_dir)
 
     p = run(command)
     if not p.returncode == 0:
@@ -49,18 +49,26 @@ def virtualenv_relocatable(virtualenv_dir, python=None):
     """Make virtualenv_dir relocatable"""
     lgr.debug('making relocatable: {0}'.format(virtualenv_dir))
     python = python or sys.executable
-    command = '{0} -m virtualenv {1} --relocatable'.format(
+    command = '{0} -m venv {1} --relocatable'.format(
         python, virtualenv_dir)
+
+    lgr.info(">> %s", command)
 
     p = run(command)
     if not p.returncode == 0:
         raise exceptions.VirtualenvCreationError(virtualenv_dir)
 
 
-def copy_distutils_to_virtualenv(virtualenv_dir):
-    distutils_path = os.path.dirname(distutils.__file__)
-    python_name = 'python{0}.{1}'.format(sys.version_info[0],
-                                         sys.version_info[1])
+def copy_distutils_to_virtualenv(virtualenv_dir, python=None):
+    python = python or sys.executable
+    if python == sys.executable:
+        python_name = 'python{0}.{1}'.format(sys.version_info[0],
+                                             sys.version_info[1])
+        distutils_path = os.path.dirname(distutils.__file__)
+    else:
+        python_root, _, python_name = python.partition('/bin/')
+        distutils_path = os.path.join(
+            python_root, 'lib', python_name, 'distutils')
     venv_lib_path = os.path.join(virtualenv_dir, 'lib', python_name)
     venv_distutils_path = os.path.join(venv_lib_path, 'distutils')
     # first, remove a distutils stub directory, if exists
@@ -92,10 +100,10 @@ def install_module(module, venv):
 def install_requirements_file(path, venv):
     """installs modules from a requirements file in a virtualenv
 
-    :param string path: path to requirements file1
+    :param string path: path to requirements file
     :param string venv: path of virtualenv to install in
     """
-    lgr.debug('Installing {0} in venv {1}'.format(path, venv))
+    lgr.info('Installing {0} in venv {1}'.format(path, venv))
     pip_cmd = '{1}/bin/pip install -r{0}'.format(path, venv)
     p = run(pip_cmd)
     if not p.returncode == 0:
