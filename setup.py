@@ -12,7 +12,7 @@ def read(*parts):
 
 
 install_requires = [
-    "virtualenv==15.1.0",
+    "virtualenv==20.26.6",
     "requests>=2.9.1,<3.0.0",
 ]
 
